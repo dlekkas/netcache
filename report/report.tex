@@ -1,0 +1,129 @@
+\documentclass[11pt,oneside,a4paper]{article}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{lscape}
+\usepackage{psfrag}
+\usepackage[usenames]{color}
+\usepackage{bbm}
+\usepackage[update]{epstopdf}
+\usepackage[bookmarks,pdfstartview=FitH,a4paper,pdfborder={0 0 0}]{hyperref}
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{textcomp}
+\usepackage{fancyhdr}
+\usepackage{multirow}
+\usepackage{tikz}
+\usepackage{lipsum}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\newcommand{\hint}[1]{{\color{blue} \em #1}}
+
+\makeatletter
+\def\cleardoublepage{\clearpage\if@twoside \ifodd\c@page\else%
+\hbox{}%
+\thispagestyle{empty}%
+\clearpage%
+\if@twocolumn\hbox{}\clearpage\fi\fi\fi}
+\makeatother
+
+\sloppy
+% \widowpenalty=10000
+% \clubpenalty=10000
+
+\title{
+    \vspace*{0.0mm}
+    \LARGE\bf\sf Advanced Topics in \\Communication Networks (Fall 2018)
+    \vspace*{10.0mm} \\
+    \Large\bf\sf Group Project Report \vspace*{30.0mm}\\
+    %
+    \Huge\bf\sf Title
+    %
+    \vspace*{30.0mm} \\
+    \normalsize
+    %
+    \sf Authors:\\[5pt]
+    \sf Firstname1 Lastname 1 \\ [5pt]
+    \sf Firstname2 Lastname 2 \\ [5pt]
+    \sf Firstname3 Lastname 3 \vspace*{5mm}\\
+    %
+    \sf  Advisor:  (name of the assistant) \vspace*{5mm}\\
+    %
+    \sf  Supervisor:  Prof. Dr. Laurent Vanbever \vspace*{20.0mm}\\
+    %
+    \sf Submitted: Dec XXX, 2018\\ [5pt]
+    \sf \pageref{lastpage} Pages
+}
+\date{}
+
+\begin{document}
+
+\begin{figure}
+    \includegraphics[width=\textwidth]{figures/eth-nsg-header}
+\end{figure}
+
+\maketitle
+\thispagestyle{empty}
+\raggedbottom
+\clearpage
+
+\pagenumbering{roman}
+
+\begin{abstract}
+    \lipsum[1-3]
+\end{abstract}
+
+\clearpage
+\setcounter{tocdepth}{2}
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+
+\section{Introduction}
+\hint{Introduction to the problem that was solved in this project.} \\
+\lipsum[1-2]
+
+\section{Background and related work}
+\hint{Briefly describe background information and related papers (if any). You do not need to describe topics that were coverd in the lecture, only other topics that are relevant for your project.} \\
+\lipsum[1-2]
+Sample citation: \cite{bosshart2014p4}
+
+\section{Implementation}
+\hint{Describe how you solved the problem and how your implementation works. Do not paste source code here.} \\
+\lipsum[1-5]
+
+\section{Evaluation}
+\hint{Describe how you tested your implementation and summarize the results.} \\
+\lipsum[1-2]
+
+\section{Conclusion}
+\hint{A brief conclusion about how you solved the project.} \\
+\lipsum[1]
+
+\label{lastpage} % this must stay here
+\clearpage
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{acm}
+\bibliography{refs}
+
+\clearpage
+\appendix
+\pagenumbering{Roman}
+
+\section{Group organization}
+\hint{Briefly describe what each team member was contributing to the project}
+
+\paragraph{Firstname1 Lastname1}
+\lipsum[2]
+
+\paragraph{Firstname2 Lastname2}
+\lipsum[3]
+
+\paragraph{Firstname3 Lastname3}
+\lipsum[4]
+
+\end{document}

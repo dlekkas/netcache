@@ -1,23 +1,25 @@
-/*************************************************************************
-*********************** H E A D E R S  ***********************************
-*************************************************************************/
+#ifndef HEADERS_P4
+#define HEADERS_P4
+
+/* netcache value table constant definitions */
+#define NETCACHE_VTABLE_NUM 8
+#define NETCACHE_VTABLE_SIZE_WIDTH 16
+#define NETCACHE_VTABLE_SLOT_WIDTH 128
+
+/* maximum number of bits of netcache fields */
+#define NETCACHE_VALUE_WIDTH_MAX 1024
+#define NETCACHE_KEY_WIDTH 128
 
 /* special reserved port for NetCache */
 const bit<16> NETCACHE_PORT = 50000;
-
-/* maximum number of bits of netcache fields */
-const bit<16> NETCACHE_VALUE_SIZE = 1024;
-const bit<16> NETCACHE_KEY_SIZE = 128;
-
-/* netcache header field types */
-typedef bit<NETCACHE_KEY_SIZE> key_t;
-typedef varbit<NETCACHE_VALUE_SIZE> value_t;
-
-
 const bit<16> TYPE_IPV4 = 0x800;
-
 const bit<8> TYPE_TCP = 0x06;
 const bit<8> TYPE_UDP = 0x11;
+
+
+/* netcache header field types */
+typedef bit<NETCACHE_KEY_WIDTH> key_t;
+typedef bit<NETCACHE_VALUE_WIDTH_MAX> value_t;
 
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
@@ -77,12 +79,17 @@ header udp_t {
 header netcache_t {
 	/* supported operations:
 	 * 00 : get, 01 : put, 10 : delete */
-	bit<2> op;
+	bit<8> op;
 	bit<32> seq;
 	key_t  key;
 	value_t value;
 }
 
+
+struct metadata {
+	bit<NETCACHE_VTABLE_NUM> vt_bitmap;
+	int<NETCACHE_VTABLE_SIZE_WIDTH> vt_idx;
+}
 
 struct headers {
     ethernet_t   ethernet;
@@ -92,3 +99,4 @@ struct headers {
 	netcache_t   netcache;
 }
 
+#endif   // HEADERS_P4

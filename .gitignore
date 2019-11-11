@@ -1,0 +1,13 @@
+# don't track logs
+src/p4/logs/
+
+
+# ignore compiled files
+*.p4i
+
+# ignore db generated files
+*.db
+
+# ignore json files except p4app.json
+*.json
+!p4/p4app.json

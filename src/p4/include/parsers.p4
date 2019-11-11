@@ -1,10 +1,9 @@
-/*************************************************************************
-*********************** P A R S E R  *******************************
-*************************************************************************/
+#ifndef PARSERS_P4
+#define PARSERS_P4
 
-parser MyParser(packet_in packet,
-                out headers hdr,
-                inout metadata meta,
+#include "headers.p4"
+
+parser MyParser(packet_in packet, out headers hdr, inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
 
     state start {
@@ -33,6 +32,7 @@ parser MyParser(packet_in packet,
         transition select(hdr.tcp.dstPort) {
 			NETCACHE_PORT : parse_netcache;
 			default: accept;
+		}
     }
 
 	state parse_udp {
@@ -44,7 +44,8 @@ parser MyParser(packet_in packet,
 	}
 
 	state parse_netcache {
-		/* TODO(dimlek): enforce in some way that write queries are TCP */
+		/* TODO #1(dimlek): enforce in some way that write queries are TCP */
+		/* TODO #2(dimlek): decide how many bytes to extract for value field */
 		packet.extract(hdr.netcache);
 		transition accept;
 	}
@@ -66,3 +67,6 @@ control MyDeparser(packet_out packet, in headers hdr) {
 
     }
 }
+
+
+#endif     // PARSERS_P4

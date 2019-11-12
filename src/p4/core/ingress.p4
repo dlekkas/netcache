@@ -3,7 +3,6 @@
 
 #include "../include/headers.p4"
 
-#define CACHE_LOOKUP_ENTRIES 65536
 
 control MyIngress(inout headers hdr,
                   inout metadata meta,
@@ -33,9 +32,9 @@ control MyIngress(inout headers hdr,
 	}
 
 	/* store bitmap and index of value table as metadata to have them available at
-	 * egress pipeline where the value tables reside */
-	action set_lookup_metadata(bit<NETCACHE_VTABLE_NUM> bitmap,
-			int<NETCACHE_VTABLE_SIZE_WIDTH> idx) {
+	 * egress pipeline where the value tables reside. this action will be called
+	 * only in case of a cache hit */
+	action set_lookup_metadata(vtableBitmap_t bitmap, vtableIdx_t idx) {
 		meta.vt_bitmap = bitmap;
 		meta.vt_idx = idx;
 	}
@@ -50,13 +49,20 @@ control MyIngress(inout headers hdr,
 			NoAction;
 		}
 
-		size = CACHE_LOOKUP_ENTRIES;
+		size = NETCACHE_ENTRIES;
 		default_action = NoAction;
 	}
 
 	apply {
+
+		if (hdr.netcache.isValid()) {
+			lookup_table.apply();
+			if (hdr.netcache.op == READ_QUERY) {
+				// TODO: set routing information by matching on source address
+				// since the switch will reply directly to client
+			}
+		}
+
 		l2_forward.apply();
-		// just to satisfy compiler
-		lookup_table.apply();
 	}
 }

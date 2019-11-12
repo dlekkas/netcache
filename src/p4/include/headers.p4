@@ -1,6 +1,9 @@
 #ifndef HEADERS_P4
 #define HEADERS_P4
 
+/* netcache size */
+#define NETCACHE_ENTRIES 65536
+
 /* netcache value table constant definitions */
 #define NETCACHE_VTABLE_NUM 8
 #define NETCACHE_VTABLE_SIZE_WIDTH 16
@@ -16,10 +19,16 @@ const bit<16> TYPE_IPV4 = 0x800;
 const bit<8> TYPE_TCP = 0x06;
 const bit<8> TYPE_UDP = 0x11;
 
+/* current query supported types */
+const bit<8> READ_QUERY = 0x00;
+const bit<8> WRITE_QUERY = 0x01;
+const bit<8> DELETE_QUERY = 0x02;
 
 /* netcache header field types */
 typedef bit<NETCACHE_KEY_WIDTH> key_t;
 typedef bit<NETCACHE_VALUE_WIDTH_MAX> value_t;
+typedef bit<NETCACHE_VTABLE_SIZE_WIDTH> vtableIdx_t;
+typedef bit<NETCACHE_VTABLE_NUM> vtableBitmap_t;
 
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
@@ -77,8 +86,6 @@ header udp_t {
 
 
 header netcache_t {
-	/* supported operations:
-	 * 00 : get, 01 : put, 10 : delete */
 	bit<8> op;
 	bit<32> seq;
 	key_t  key;
@@ -87,8 +94,12 @@ header netcache_t {
 
 
 struct metadata {
-	bit<NETCACHE_VTABLE_NUM> vt_bitmap;
-	int<NETCACHE_VTABLE_SIZE_WIDTH> vt_idx;
+	vtableBitmap_t vt_bitmap;
+	vtableIdx_t vt_idx;
+
+	// TODO(dimlek): routing metadata information should also be
+	// stored here, because packet mirroring is used
+	egressSpec_t out_port;
 }
 
 struct headers {

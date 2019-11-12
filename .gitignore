@@ -10,4 +10,4 @@ src/p4/logs/
 
 # ignore json files except p4app.json
 *.json
-!p4/p4app.json
+!src/p4/p4app.json

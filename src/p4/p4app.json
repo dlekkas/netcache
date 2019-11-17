@@ -24,7 +24,7 @@
     "object_name": "P4Mininet"
   },
   "topology": {
-    "assignment_strategy" : "mixed",
+    "assignment_strategy" : "l2",
     "links": [["client", "s1"], ["server", "s1"]],
     "hosts": {
       "client": { },
@@ -32,7 +32,7 @@
     },
     "switches": {
       "s1": {
-        "cli_input": "",
+        "cli_input": "s1-commands.txt",
         "program": "core/netcache.p4"
       }
     }

@@ -130,7 +130,7 @@ class KVServer:
             else:
                 logging.info('Unsupported query type received from client ' + addr[0] + ":" + str(addr[1]))
 
-server = KVServer('127.0.0.1', 40007)
+server = KVServer('10.0.0.2', 40007)
 server.activate()
 
 

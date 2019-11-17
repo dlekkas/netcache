@@ -41,7 +41,7 @@ class NetCacheClient:
         tcps.send(msg)
         tcps.close()
 
-client = NetCacheClient('127.0.0.1', 40007)
+client = NetCacheClient('10.0.0.2', 40007)
 
 client.read(0)
 client.put(0,"test")

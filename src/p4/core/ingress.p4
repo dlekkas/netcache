@@ -20,7 +20,7 @@ control MyIngress(inout headers hdr,
 	/* Simple l2 forwarding logic for testing purposes */
 	table l2_forward {
 		key = {
-			standard_metadata.ingress_port : exact;
+			hdr.ethernet.dstAddr: exact;
 		}
 		actions = {
 			set_egress_port;

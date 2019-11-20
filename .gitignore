@@ -1,5 +1,7 @@
 # don't track logs
 src/p4/log/
+*.log
+
 
 
 # ignore compiled files
@@ -10,6 +12,7 @@ src/p4/log/
 
 # ignore vim swap files
 *.swp
+*.swo
 
 # ignore json files except p4app.json
 *.json

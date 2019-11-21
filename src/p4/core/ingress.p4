@@ -55,14 +55,19 @@ control MyIngress(inout headers hdr,
 
 	apply {
 
-		if (hdr.netcache.isValid()) {
+		if (hdr.netcache.isValid() && hdr.netcache.op == READ_QUERY) {
 			lookup_table.apply();
-			if (hdr.netcache.op == READ_QUERY) {
-				// TODO: set routing information by matching on source address
-				// since the switch will reply directly to client
-			}
-		}
 
-		l2_forward.apply();
+            //determine how packet is routed
+            if (meta.vt_bitmap == 0) {
+                standard_metadata.egress_spec = 2;
+            } else {
+                standard_metadata.egress_spec = 1;
+            }
+		} else {
+            l2_forward.apply();
+        }
+
+
 	}
 }

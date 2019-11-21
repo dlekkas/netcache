@@ -1,14 +1,17 @@
 import socket
 
-def build_message(op, key, seq=0, value = None):
+def convert(val):
+	return int.from_bytes(bytes(val, "utf-8"), "big")
+
+def build_message(op, key, seq=0, value = ""):
 
     msg = bytearray()
     msg += op.to_bytes(1, 'big')
     msg += seq.to_bytes(4, 'big')
-    msg += key.to_bytes(16, 'big')
 
-    if value != None:
-        msg += bytes(value, "utf-8")
+    msg += convert(key).to_bytes(16, 'big')
+
+    msg += convert(value).to_bytes(128, 'big')
 
     return msg
 
@@ -41,11 +44,6 @@ class NetCacheClient:
         tcps.send(msg)
         tcps.close()
 
-client = NetCacheClient('10.0.0.2', 40007)
+client = NetCacheClient('10.0.0.2', 50000)
 
-client.read(0)
-client.put(0,"test")
-client.read(1)
-client.read(0)
-client.delete(0)
-client.read(0)
+client.read("one")

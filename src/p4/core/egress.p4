@@ -164,7 +164,7 @@ control MyEgress(inout headers hdr,
 
 	table vtable_0 {
 		key = {
-			meta.vt_bitmap[0:0]: exact;
+			meta.vt_bitmap[7:7]: exact;
 		}
 		actions = {
 			process_array_0;
@@ -176,7 +176,7 @@ control MyEgress(inout headers hdr,
 
 	table vtable_1 {
 		key = {
-			meta.vt_bitmap[1:1]: exact;
+			meta.vt_bitmap[6:6]: exact;
 		}
 		actions = {
 			process_array_1;
@@ -188,7 +188,7 @@ control MyEgress(inout headers hdr,
 
 	table vtable_2 {
 		key = {
-			meta.vt_bitmap[2:2]: exact;
+			meta.vt_bitmap[5:5]: exact;
 		}
 		actions = {
 			process_array_2;
@@ -200,7 +200,7 @@ control MyEgress(inout headers hdr,
 
 	table vtable_3 {
 		key = {
-			meta.vt_bitmap[3:3]: exact;
+			meta.vt_bitmap[4:4]: exact;
 		}
 		actions = {
 			process_array_3;
@@ -212,7 +212,7 @@ control MyEgress(inout headers hdr,
 
 	table vtable_4 {
 		key = {
-			meta.vt_bitmap[4:4]: exact;
+			meta.vt_bitmap[3:3]: exact;
 		}
 		actions = {
 			process_array_4;
@@ -224,7 +224,7 @@ control MyEgress(inout headers hdr,
 
 	table vtable_5 {
 		key = {
-			meta.vt_bitmap[5:5]: exact;
+			meta.vt_bitmap[2:2]: exact;
 		}
 		actions = {
 			process_array_5;
@@ -236,7 +236,7 @@ control MyEgress(inout headers hdr,
 
 	table vtable_6 {
 		key = {
-			meta.vt_bitmap[6:6]: exact;
+			meta.vt_bitmap[1:1]: exact;
 		}
 		actions = {
 			process_array_6;
@@ -248,7 +248,7 @@ control MyEgress(inout headers hdr,
 
 	table vtable_7 {
 		key = {
-			meta.vt_bitmap[7:7]: exact;
+			meta.vt_bitmap[0:0]: exact;
 		}
 		actions = {
 			process_array_7;

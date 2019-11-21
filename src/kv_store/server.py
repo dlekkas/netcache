@@ -18,6 +18,20 @@ NETCACHE_READ_QUERY = 0
 NETCACHE_WRITE_QUERY = 1
 NETCACHE_DELETE_QUERY = 2
 
+def convert(val):
+    return int.from_bytes(bytes(val, "utf-8"), "big")
+
+def build_message(op, key, seq=0, value = ""):
+
+    msg = bytearray()
+    msg += op.to_bytes(1, 'big')
+    msg += seq.to_bytes(4, 'big')
+    msg += key.to_bytes(16, 'big')
+
+    msg += convert(value).to_bytes(128, 'big')
+
+    return msg
+
 
 class KVServer:
 
@@ -76,6 +90,7 @@ class KVServer:
 
             #transform key to int
             key = int.from_bytes(key,'big')
+            seq = int.from_bytes(seq,'big')
 
             if op != NETCACHE_READ_QUERY:
                 logging.info('Unsupported/Invalid query type received from client ' + addr[0])
@@ -84,11 +99,14 @@ class KVServer:
 
                 if key in self.kv_store:
                     val = self.kv_store[key]
-                    self.udpss.sendto(bytes(val, "utf-8"), addr)
+                    msg = build_message(0, key, seq, val)
+                    self.udpss.sendto(msg, addr)
                 else:
 
                     # TODO: ?what is the behaviour in this case?
-                    self.udpss.sendto(bytes("no such key", "utf-8"), addr)
+                    val = "no such key"
+                    msg = build_message(0, key, seq, val)
+                    self.udpss.sendto(msg, addr)
 
     # serves incoming tcp queries (i.e. put/delete)
     def handle_client_tcp_request(self):

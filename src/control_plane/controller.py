@@ -136,7 +136,7 @@ class NCacheController(object):
     def dummy_populate_vtables(self):
         test_values_l = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta",
                          "hita", "theta", "yiota", "kappa", "lambda", "meta"]
-        test_keys_l = ["one", "two" "three", "four", "five", "six", "seven",
+        test_keys_l = ["one", "two", "three", "four", "five", "six", "seven",
                        "eight", "nine", "ten", "eleven", "twelve"]
         cnt = 0
         for i in range(11):

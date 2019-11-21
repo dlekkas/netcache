@@ -63,6 +63,21 @@ control MyIngress(inout headers hdr,
                 standard_metadata.egress_spec = 2;
             } else {
                 standard_metadata.egress_spec = 1;
+
+                macAddr_t macTmp;
+                macTmp = hdr.ethernet.srcAddr;
+                hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+                hdr.ethernet.dstAddr = macTmp;
+
+                ip4Addr_t ipTmp;
+                ipTmp = hdr.ipv4.srcAddr;
+                hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
+                hdr.ipv4.dstAddr = ipTmp;
+
+                bit<16> udpPortTmp;
+                udpPortTmp = hdr.udp.srcPort;
+                hdr.udp.srcPort = hdr.udp.dstPort;
+                hdr.udp.dstPort = udpPortTmp;
             }
 		} else {
             l2_forward.apply();

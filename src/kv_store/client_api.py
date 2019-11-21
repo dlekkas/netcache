@@ -26,9 +26,9 @@ class NetCacheClient:
         msg = build_message(0, key, seq)
         self.udps.connect((self.host, self.port))
         self.udps.send(msg)
-        data = self.udps.recvfrom(1024)
+        data = self.udps.recv(1024)
         self.udps.close
-        print(data[0].decode("utf-8"))
+        print(data[21:].decode("utf-8"))
 
     def put(self, key, value, seq = 0):
         msg = build_message(1, key, seq, value)
@@ -46,4 +46,22 @@ class NetCacheClient:
 
 client = NetCacheClient('10.0.0.2', 50000)
 
+# read should be returned from switch (cached statically)
 client.read("one")
+client.read("two")
+client.read("ten")
+
+# read should be forwared to KV-Store and return error (not inserted)
+client.read("test")
+
+# put query should be forwarded to KV-Store
+client.put("test", "testvalue")
+
+# read should be forwared to KV-Store and return testvalue
+client.read("test")
+
+# delete query should be forwarded to KV-Store
+client.delete("test")
+
+# read should be forwared to KV-Store and return error (deleted)
+client.read("test")

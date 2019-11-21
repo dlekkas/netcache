@@ -2,10 +2,12 @@
 src/p4/log/
 *.log
 
-
+# ignore pycache
+src/kv_store/__pycache__/
 
 # ignore compiled files
 *.p4i
+*.pyc
 
 # ignore db generated files
 *.db

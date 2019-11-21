@@ -12,7 +12,6 @@ control MyIngress(inout headers hdr,
 		mark_to_drop(standard_metadata);
 	}
 
-
 	action set_egress_port(egressSpec_t port) {
 		standard_metadata.egress_spec = port;
 	}
@@ -22,6 +21,7 @@ control MyIngress(inout headers hdr,
 		key = {
 			hdr.ethernet.dstAddr: exact;
 		}
+
 		actions = {
 			set_egress_port;
 			drop;
@@ -31,9 +31,30 @@ control MyIngress(inout headers hdr,
 		default_action = drop();
 	}
 
+
+	/* set the appropriate packet fields to make the packet ready to return to
+	 * client without forwarding it to the server - this action is only invoked
+	 * in case of a cache hit */
+	action ret_pkt_to_client() {
+		macAddr_t macTmp;
+		macTmp = hdr.ethernet.srcAddr;
+		hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+		hdr.ethernet.dstAddr = macTmp;
+
+		ip4Addr_t ipTmp;
+		ipTmp = hdr.ipv4.srcAddr;
+		hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
+		hdr.ipv4.dstAddr = ipTmp;
+
+		bit<16> udpPortTmp;
+		udpPortTmp = hdr.udp.srcPort;
+		hdr.udp.srcPort = hdr.udp.dstPort;
+		hdr.udp.dstPort = udpPortTmp;
+	}
+
+
 	/* store bitmap and index of value table as metadata to have them available at
-	 * egress pipeline where the value tables reside. this action will be called
-	 * only in case of a cache hit */
+	 * egress pipeline where the value tables reside */
 	action set_lookup_metadata(vtableBitmap_t bitmap, vtableIdx_t idx) {
 		meta.vt_bitmap = bitmap;
 		meta.vt_idx = idx;
@@ -44,6 +65,7 @@ control MyIngress(inout headers hdr,
 		key = {
 			hdr.netcache.key : exact;
 		}
+
 		actions = {
 			set_lookup_metadata;
 			NoAction;
@@ -53,36 +75,16 @@ control MyIngress(inout headers hdr,
 		default_action = NoAction;
 	}
 
+
 	apply {
 
 		if (hdr.netcache.isValid() && hdr.netcache.op == READ_QUERY) {
-			lookup_table.apply();
+			switch(lookup_table.apply().action_run) {
+				set_lookup_metadata: { ret_pkt_to_client(); }  // cache hit
+			}
+		}
 
-            //determine how packet is routed
-            if (meta.vt_bitmap == 0) {
-                standard_metadata.egress_spec = 2;
-            } else {
-                standard_metadata.egress_spec = 1;
-
-                macAddr_t macTmp;
-                macTmp = hdr.ethernet.srcAddr;
-                hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
-                hdr.ethernet.dstAddr = macTmp;
-
-                ip4Addr_t ipTmp;
-                ipTmp = hdr.ipv4.srcAddr;
-                hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
-                hdr.ipv4.dstAddr = ipTmp;
-
-                bit<16> udpPortTmp;
-                udpPortTmp = hdr.udp.srcPort;
-                hdr.udp.srcPort = hdr.udp.dstPort;
-                hdr.udp.dstPort = udpPortTmp;
-            }
-		} else {
-            l2_forward.apply();
-        }
-
-
+		l2_forward.apply();
 	}
+
 }

@@ -31,10 +31,9 @@ control MyIngress(inout headers hdr,
 		default_action = drop();
 	}
 
-
-	/* set the appropriate packet fields to make the packet ready to return to
-	 * client without forwarding it to the server - this action is only invoked
-	 * in case of a cache hit */
+	 /* update the packet header by swapping the source and destination addresses
+	  * and ports in L2-L4 header fields in order to make the packet ready to
+	  * return to the client */
 	action ret_pkt_to_client() {
 		macAddr_t macTmp;
 		macTmp = hdr.ethernet.srcAddr;

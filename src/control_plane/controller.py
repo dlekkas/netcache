@@ -1,20 +1,32 @@
-import struct
-import random
 from p4utils.utils.topology import Topology
 from p4utils.utils.sswitch_API import SimpleSwitchAPI
+
+import threading
+import struct
+import random
+import socket
+import sys
 
 VTABLE_NAME_PREFIX = 'vt'
 VTABLE_SLOT_SIZE = 16   # in bytes
 VTABLE_ENTRIES = 65536
 
 
+NETCACHE_HOT_QUERY = 3
+
+
 class NCacheController(object):
 
-    def __init__(self, sw_name, vtables_num=8):
+    def __init__(self, host, port, sw_name, vtables_num=8):
         self.topo = Topology(db="../p4/topology.db")
         self.sw_name = sw_name
         self.thrift_port = self.topo.get_thrift_port(sw_name)
         self.controller = SimpleSwitchAPI(self.thrift_port)
+
+        # udp socket receiving connections from switch
+        self.udp_socket = None
+        self.host = host
+        self.port = port
 
         self.vtables = []
         self.vtables_num = vtables_num
@@ -24,14 +36,16 @@ class NCacheController(object):
         self.key_map = {}
 
 
-    # simple forwarding rules for testing purposes
-    '''
-    def set_forwarding_tables(self):
-        self.controller.table_add("l2_forward", "set_egress_port", ['1'], ['2'])
-        self.controller.table_add("l2_forward", "set_egress_port", ['2'], ['1'])
-    '''
+    def setup(self):
+        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_socket.bind((self.host, self.port))
 
-    #
+        # spawn new thread to serve incoming udp connections
+        # (i.e hot reports from the switch)
+        udp_t = threading.Thread(target=self.handle_hot_reports)
+        udp_t.start()
+
+
     def set_value_tables(self):
         # TODO(dimlek): do this with for loop maybe
         self.controller.table_add("vtable_0", "process_array_0", ['1'], [])
@@ -141,6 +155,25 @@ class NCacheController(object):
         cnt = 0
         for i in range(11):
             self.insert_value(test_keys_l[i], test_values_l[i])
+
+
+    def handle_hot_reports(self):
+        while True:
+            data, addr = self.udpss.recvfrom(4096)
+
+            op = data[0]
+            # only hot queries should be accepted by controller
+            if op != NETCACHE_HOT_QUERY:
+                continue
+            seq = netcache_pkt[1:5]
+            key = netcache_pkt[5:21]
+            value = netcache_pkt[21:]
+
+            # insert the hot key to cache
+            insert_value(key, value)
+            print("key=" + str(key))
+            print("value="+ str(value))
+
 
 
 

@@ -77,9 +77,11 @@ control MyIngress(inout headers hdr,
 
 	apply {
 
-		if (hdr.netcache.isValid() && hdr.netcache.op == READ_QUERY) {
-			switch(lookup_table.apply().action_run) {
-				set_lookup_metadata: { ret_pkt_to_client(); }  // cache hit
+		if (hdr.netcache.isValid()) {
+			if (hdr.netcache.op == READ_QUERY) {
+				switch(lookup_table.apply().action_run) {
+					set_lookup_metadata: { ret_pkt_to_client(); }  // cache hit
+				}
 			}
 		}
 

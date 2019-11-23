@@ -3,6 +3,25 @@
 
 #include "../include/headers.p4"
 
+#define HOTQUERY_MIRROR_SESSION 100
+
+#define PKT_INSTANCE_TYPE_NORMAL 0
+#define PKT_INSTANCE_TYPE_INGRESS_CLONE 1
+#define PKT_INSTANCE_TYPE_EGRESS_CLONE 2
+#define PKT_INSTANCE_TYPE_COALESCED 3
+#define PKT_INSTANCE_TYPE_INGRESS_RECIRC 4
+#define PKT_INSTANCE_TYPE_REPLICATION 5
+#define PKT_INSTANCE_TYPE_RESUBMIT 6
+
+#define pkt_is_mirrored \
+	((standard_metadata.instance_type != PKT_INSTANCE_TYPE_NORMAL) && \
+	 (standard_metadata.instance_type != PKT_INSTANCE_TYPE_REPLICATION))
+
+#define pkt_is_not_mirrored \
+	 ((standard_metadata.instance_type == PKT_INSTANCE_TYPE_NORMAL) || \
+	  (standard_metadata.instance_type == PKT_INSTANCE_TYPE_REPLICATION))
+
+
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
@@ -260,15 +279,19 @@ control MyEgress(inout headers hdr,
 
 
     apply {
-		if (hdr.netcache.op == READ_QUERY) {
-			vtable_0.apply();
-			vtable_1.apply();
-			vtable_2.apply();
-			vtable_3.apply();
-			vtable_4.apply();
-			vtable_5.apply();
-			vtable_6.apply();
-			vtable_7.apply();
+
+		if (hdr.netcache.isValid()) {
+			if (hdr.netcache.op == READ_QUERY) {
+				vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
+				vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();
+
+				// TODO: check if it should be reported to the controller and report it, here
+				// we simple report it in any case (i.e consider each read as a hot query)
+				if (pkt_is_not_mirrored) {
+					clone(CloneType.E2E, HOTQUERY_MIRROR_SESSION);
+				}
+			}
 		}
+
 	}
 }

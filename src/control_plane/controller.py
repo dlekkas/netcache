@@ -1,32 +1,35 @@
 from p4utils.utils.topology import Topology
 from p4utils.utils.sswitch_API import SimpleSwitchAPI
+from scapy.all import sniff, Packet, Ether, IP, UDP, BitField, Raw
 
 import threading
 import struct
 import random
-import socket
-import sys
 
 VTABLE_NAME_PREFIX = 'vt'
 VTABLE_SLOT_SIZE = 16   # in bytes
 VTABLE_ENTRIES = 65536
 
+HOTQUERY_MIRROR_SESSION = 100
 
 NETCACHE_HOT_QUERY = 3
 
 
+
+class NetcacheHeader(Packet):
+    name = 'NcachePacket'
+    fields_desc = [BitField('op', 0, 8), BitField('seq', 0, 32),
+            BitField('key', 0, 128), BitField('value', 0, 1024)]
+
+
 class NCacheController(object):
 
-    def __init__(self, host, port, sw_name, vtables_num=8):
+    def __init__(self, sw_name, vtables_num=8):
         self.topo = Topology(db="../p4/topology.db")
         self.sw_name = sw_name
-        self.thrift_port = self.topo.get_thrift_port(sw_name)
+        self.thrift_port = self.topo.get_thrift_port(self.sw_name)
+        self.cpu_port = self.topo.get_cpu_port_index(self.sw_name)
         self.controller = SimpleSwitchAPI(self.thrift_port)
-
-        # udp socket receiving connections from switch
-        self.udp_socket = None
-        self.host = host
-        self.port = port
 
         self.vtables = []
         self.vtables_num = vtables_num
@@ -35,15 +38,17 @@ class NCacheController(object):
         # in the P4 switch that corresponds to each key
         self.key_map = {}
 
+        self.setup()
+
 
     def setup(self):
-        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_socket.bind((self.host, self.port))
+        if self.cpu_port:
+            self.controller.mirroring_add(HOTQUERY_MIRROR_SESSION, self.cpu_port)
 
         # spawn new thread to serve incoming udp connections
         # (i.e hot reports from the switch)
-        udp_t = threading.Thread(target=self.handle_hot_reports)
-        udp_t.start()
+        #udp_t = threading.Thread(target=self.hot_reports_loop)
+        #udp_t.start()
 
 
     def set_value_tables(self):
@@ -139,6 +144,27 @@ class NCacheController(object):
         return struct.unpack(">QQ", bytearr)[1]
 
 
+    # given an arbitrary sized integer, the max width (in bits) of the integer
+    # it returns the string representation of the number (also stripping it of
+    # any '0x00' characters)
+    def int_to_packed(self, int_val, max_width=128, word_size=32):
+        num_words = max_width / word_size
+        words = self.int_to_words(int_val, num_words, word_size)
+
+        fmt = '>%dI' % (num_words)
+        return struct.pack(fmt, *words).strip('\x00')
+
+    def int_to_words(self, int_val, num_words=4, word_size=32):
+        max_int = 2 ** (word_size*num_words) - 1
+        max_word_size = 2 ** word_size - 1
+        words = []
+        for _ in range(num_words):
+            word = int_val & max_word_size
+            words.append(int(word))
+            int_val >>= word_size
+        words.reverse()
+        return words
+
 
     # TODO(dimlek): implement the logic of evicting a specified key and its associated
     # value from the cache on the switch (update lookup tables and value registers)
@@ -157,29 +183,29 @@ class NCacheController(object):
             self.insert_value(test_keys_l[i], test_values_l[i])
 
 
-    def handle_hot_reports(self):
-        while True:
-            data, addr = self.udpss.recvfrom(4096)
 
-            op = data[0]
-            # only hot queries should be accepted by controller
-            if op != NETCACHE_HOT_QUERY:
-                continue
-            seq = netcache_pkt[1:5]
-            key = netcache_pkt[5:21]
-            value = netcache_pkt[21:]
-
-            # insert the hot key to cache
-            insert_value(key, value)
-            print("key=" + str(key))
-            print("value="+ str(value))
+    def recv_hot_report(self, pkt):
+        # extract netcache header information
+        ncache_header = NetcacheHeader(pkt[UDP].payload)
+        op = self.int_to_packed(ncache_header.op, max_width=8)
+        key = self.int_to_packed(ncache_header.key, max_width=128)
+        value = self.int_to_packed(ncache_header.value, max_width=1024)
+        # if value field is empty then do not insert to cache
+        if not value:
+            return
+        # insert the key value pair of the hot report to cache
+        # self.insert_value(key,value)
 
 
+    def hot_reports_loop(self):
+        cpu_port_intf = str(self.topo.get_cpu_port_intf(self.sw_name))
+        sniff(iface=cpu_port_intf, prn=self.recv_hot_report, filter="udp port 50000")
 
 
     def main(self):
         self.set_value_tables()
         self.dummy_populate_vtables()
+        self.hot_reports_loop()
 
 if __name__ == "__main__":
     controller = NCacheController('s1').main()

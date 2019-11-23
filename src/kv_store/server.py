@@ -17,6 +17,7 @@ logging.basicConfig(
 NETCACHE_READ_QUERY = 0
 NETCACHE_WRITE_QUERY = 1
 NETCACHE_DELETE_QUERY = 2
+NETCACHE_KEY_NOT_FOUND = 5
 
 def convert(val):
     return int.from_bytes(bytes(val, "utf-8"), "big")
@@ -99,13 +100,13 @@ class KVServer:
 
                 if key in self.kv_store:
                     val = self.kv_store[key]
-                    msg = build_message(0, key, seq, val)
+                    msg = build_message(NETCACHE_READ_QUERY, key, seq, val)
                     self.udpss.sendto(msg, addr)
                 else:
 
                     # TODO: ?what is the behaviour in this case?
-                    val = "no such key"
-                    msg = build_message(0, key, seq, val)
+                    val = ""
+                    msg = build_message(NETCACHE_KEY_NOT_FOUND, key, seq, val)
                     self.udpss.sendto(msg, addr)
 
     # serves incoming tcp queries (i.e. put/delete)

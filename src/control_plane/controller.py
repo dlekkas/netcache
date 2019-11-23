@@ -13,6 +13,7 @@ VTABLE_ENTRIES = 65536
 HOTQUERY_MIRROR_SESSION = 100
 
 NETCACHE_HOT_QUERY = 3
+NETCACHE_KEY_NOT_FOUND = 5
 
 
 
@@ -128,6 +129,7 @@ class NCacheController(object):
         bitmap = self.convert_to_bitmap(bitmaplist, self.vtables_num)
         self.controller.table_add("lookup_table", "set_lookup_metadata",
             [str(self.str_to_int(key))], [str(bitmap), str(index)])
+        print("Inserted key-value pair to cache: ("+key+","+value+")")
 
 
     # converts a string to a bytes representation and afterwards returns
@@ -146,7 +148,7 @@ class NCacheController(object):
 
     # given an arbitrary sized integer, the max width (in bits) of the integer
     # it returns the string representation of the number (also stripping it of
-    # any '0x00' characters)
+    # any '0x00' characters) (network byte order is assumed)
     def int_to_packed(self, int_val, max_width=128, word_size=32):
         num_words = max_width / word_size
         words = self.int_to_words(int_val, num_words, word_size)
@@ -154,7 +156,10 @@ class NCacheController(object):
         fmt = '>%dI' % (num_words)
         return struct.pack(fmt, *words).strip('\x00')
 
-    def int_to_words(self, int_val, num_words=4, word_size=32):
+    # split up an arbitrary sized integer to words (needed to hack
+    # around struct.pack limitation to convert to byte any integer
+    # greater than 8 bytes)
+    def int_to_words(self, int_val, num_words, word_size):
         max_int = 2 ** (word_size*num_words) - 1
         max_word_size = 2 ** word_size - 1
         words = []
@@ -184,19 +189,24 @@ class NCacheController(object):
 
 
 
+    # handling reports from the switch corresponding to hot keys - this function
+    # receives a packet, extracts its netcache header and inserts the reported
+    # key value store to the switch cache
     def recv_hot_report(self, pkt):
         # extract netcache header information
         ncache_header = NetcacheHeader(pkt[UDP].payload)
-        op = self.int_to_packed(ncache_header.op, max_width=8)
         key = self.int_to_packed(ncache_header.key, max_width=128)
         value = self.int_to_packed(ncache_header.value, max_width=1024)
-        # if value field is empty then do not insert to cache
-        if not value:
+        # if the netcache header has null value or if the "hot key"
+        # reported doesn't exist then do not update cache
+        if not value or ncache_header.op == NETCACHE_KEY_NOT_FOUND:
             return
         # insert the key value pair of the hot report to cache
-        # self.insert_value(key,value)
+        self.insert_value(key,value)
 
 
+    # sniff infinitely the interface connected to the P4 switch and when a valid netcache
+    # packet is captured, handle the packet via a callback to recv_hot_report function
     def hot_reports_loop(self):
         cpu_port_intf = str(self.topo.get_cpu_port_intf(self.sw_name))
         sniff(iface=cpu_port_intf, prn=self.recv_hot_report, filter="udp port 50000")
@@ -207,5 +217,7 @@ class NCacheController(object):
         self.dummy_populate_vtables()
         self.hot_reports_loop()
 
+
 if __name__ == "__main__":
     controller = NCacheController('s1').main()
+

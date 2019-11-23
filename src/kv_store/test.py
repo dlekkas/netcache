@@ -13,15 +13,15 @@ def main():
     client.read("test")
 
     # put query should be forwarded to KV-Store
-    client.put("test", "testvalue")
+    client.put("test", "test_ok")
 
-    # read should be forwared to KV-Store and return testvalue
+    # read should be forwared to KV-Store and then cached by P4 switch
     client.read("test")
 
     # delete query should be forwarded to KV-Store
     client.delete("test")
 
-    # read should be forwared to KV-Store and return error (deleted)
+    # read should be replied by the P4 switch (since cache invalidation is not implemented)
     client.read("test")
 
 

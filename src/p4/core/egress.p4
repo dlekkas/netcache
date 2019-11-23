@@ -285,11 +285,12 @@ control MyEgress(inout headers hdr,
 				vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
 				vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();
 
-				// TODO: check if it should be reported to the controller and report it, here
-				// we simple report it in any case (i.e consider each read as a hot query)
-				if (pkt_is_not_mirrored) {
-					clone(CloneType.E2E, HOTQUERY_MIRROR_SESSION);
-				}
+			}
+
+			// TODO: check if it should be reported to the controller and report it, here
+			// we simple report it in any case (i.e consider each read as a hot query)
+			if (pkt_is_not_mirrored) {
+				clone(CloneType.E2E, HOTQUERY_MIRROR_SESSION);
 			}
 		}
 

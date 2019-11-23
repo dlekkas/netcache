@@ -37,8 +37,9 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata meta,
 
 	state parse_udp {
 		packet.extract(hdr.udp);
-		transition select(hdr.udp.dstPort) {
-			NETCACHE_PORT : parse_netcache;
+		transition select(hdr.udp.dstPort, hdr.udp.srcPort) {
+			(NETCACHE_PORT, _) : parse_netcache;
+			(_, NETCACHE_PORT) : parse_netcache;
 			default: accept;
 		}
 	}

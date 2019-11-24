@@ -23,6 +23,7 @@ const bit<8> TYPE_UDP = 0x11;
 const bit<8> READ_QUERY = 0x00;
 const bit<8> WRITE_QUERY = 0x01;
 const bit<8> DELETE_QUERY = 0x02;
+const bit<8> HOT_READ_QUERY = 0x03;
 
 /* netcache header field types */
 typedef bit<NETCACHE_KEY_WIDTH> key_t;
@@ -100,6 +101,8 @@ struct metadata {
 	// TODO(dimlek): routing metadata information should also be
 	// stored here, because packet mirroring is used
 	egressSpec_t out_port;
+
+	bit<1> hot_query;
 }
 
 struct headers {

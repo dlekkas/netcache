@@ -197,6 +197,8 @@ class NCacheController(object):
         ncache_header = NetcacheHeader(pkt[UDP].payload)
         key = self.int_to_packed(ncache_header.key, max_width=128)
         value = self.int_to_packed(ncache_header.value, max_width=1024)
+
+        print("Received message for " + key + "=" + value)
         # if the netcache header has null value or if the "hot key"
         # reported doesn't exist then do not update cache
         if not value or ncache_header.op == NETCACHE_KEY_NOT_FOUND:

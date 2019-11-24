@@ -26,6 +26,8 @@ control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
 
+	#include "query_statistics.p4"
+
 	// TODO: declare value tables here, we need 8 value tables and we will
 	// use them to construct the final value that we return to the client.
 	// To construct the final value, we append the value from each tables
@@ -287,12 +289,22 @@ control MyEgress(inout headers hdr,
 
 			}
 
-			// TODO: check if it should be reported to the controller and report it, here
-			// we simple report it in any case (i.e consider each read as a hot query)
-			if (pkt_is_not_mirrored) {
-				clone(CloneType.E2E, HOTQUERY_MIRROR_SESSION);
+
+			// if the bitmap is not full of zeros then we had cache hit
+			bool cache_hit = (meta.vt_bitmap != 0);
+
+			// a query should be reported to the controller, if we had a cache miss, if the
+			// hot query field set by the count min sketch is set to one, if it doesn't exist
+			// in the bloom filter and if it is originated from the server (since we also
+			// need the value to provide a complete update to the controller)
+			if (!cache_hit && pkt_is_not_mirrored && hdr.udp.srcPort == NETCACHE_PORT) {
+				inspect_bloom_filter();
+				if (meta.hot_query == 1) {
+					update_bloom_filter();
+					clone(CloneType.E2E, HOTQUERY_MIRROR_SESSION);
+				}
 			}
 		}
-
 	}
 }
+

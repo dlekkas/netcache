@@ -10,7 +10,7 @@ def main():
     client.read("ten")
 
     # read should be forwared to KV-Store and return error (not inserted)
-    client.read("test")
+    # client.read("test")
 
     # put query should be forwarded to KV-Store
     client.put("test", "test_ok")
@@ -22,6 +22,7 @@ def main():
     client.delete("test")
 
     # read should be replied by the P4 switch (since cache invalidation is not implemented)
+    client.read("test")
     client.read("test")
 
 

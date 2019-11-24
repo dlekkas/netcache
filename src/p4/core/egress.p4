@@ -4,6 +4,7 @@
 #include "../include/headers.p4"
 
 #define HOTQUERY_MIRROR_SESSION 100
+#define HOT_KEY_THRESHOLD 3
 
 #define PKT_INSTANCE_TYPE_NORMAL 0
 #define PKT_INSTANCE_TYPE_INGRESS_CLONE 1
@@ -287,16 +288,34 @@ control MyEgress(inout headers hdr,
 				vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
 				vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();
 
+
+				// if the bitmap is not full of zeros then we had cache hit
+				bool cache_hit = (meta.vt_bitmap != 0);
+
+				if (!cache_hit) {
+					if (pkt_is_not_mirrored && hdr.udp.srcPort == NETCACHE_PORT) {
+
+						update_count_min_sketch();
+						if (meta.key_cnt >= HOT_KEY_THRESHOLD) {
+
+							inspect_bloom_filter();
+							if (meta.hot_query == 1) {
+								update_bloom_filter();
+								clone(CloneType.E2E, HOTQUERY_MIRROR_SESSION);
+							}
+						}
+					}
+
+				} else {
+					// TODO: update per-key counter for each cached item
+				}
 			}
-
-
-			// if the bitmap is not full of zeros then we had cache hit
-			bool cache_hit = (meta.vt_bitmap != 0);
 
 			// a query should be reported to the controller, if we had a cache miss, if the
 			// hot query field set by the count min sketch is set to one, if it doesn't exist
 			// in the bloom filter and if it is originated from the server (since we also
 			// need the value to provide a complete update to the controller)
+			/*
 			if (!cache_hit && pkt_is_not_mirrored && hdr.udp.srcPort == NETCACHE_PORT) {
 				inspect_bloom_filter();
 				if (meta.hot_query == 1) {
@@ -304,6 +323,7 @@ control MyEgress(inout headers hdr,
 					clone(CloneType.E2E, HOTQUERY_MIRROR_SESSION);
 				}
 			}
+			*/
 		}
 	}
 }

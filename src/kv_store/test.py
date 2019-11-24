@@ -15,15 +15,32 @@ def main():
     # put query should be forwarded to KV-Store
     client.put("test", "test_ok")
 
-    # read should be forwared to KV-Store and then cached by P4 switch
+    # read should be forwared to KV-Store
     client.read("test")
+    client.read("test")
+    #client.read("test")
 
     # delete query should be forwarded to KV-Store
     client.delete("test")
 
-    # read should be replied by the P4 switch (since cache invalidation is not implemented)
+    # read should fail for hot key report threshold set to 3 (testing purposes)
     client.read("test")
-    client.read("test")
+
+    client.put("test_2", "test2_ok")
+    client.read("test_2")
+    client.read("test_2")
+
+    # key should get cached after this one (threshold = 3)
+    client.read("test_2")
+
+    # delete query forwarded to KV-store
+    client.delete("test")
+
+    # key should be cached and hence it will be replied by the switch (since
+    # cache invalidation is not implemented yet)
+    client.read("test_2")
+
+
 
 
 if __name__=="__main__":

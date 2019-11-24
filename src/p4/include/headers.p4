@@ -1,6 +1,8 @@
 #ifndef HEADERS_P4
 #define HEADERS_P4
 
+#define SKETCH_CELL_BIT_WIDTH 16
+
 /* netcache size */
 #define NETCACHE_ENTRIES 65536
 
@@ -102,6 +104,7 @@ struct metadata {
 	// stored here, because packet mirroring is used
 	egressSpec_t out_port;
 
+	bit<SKETCH_CELL_BIT_WIDTH> key_cnt;
 	bit<1> hot_query;
 }
 

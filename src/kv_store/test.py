@@ -18,7 +18,6 @@ def main():
     # read should be forwared to KV-Store
     client.read("test")
     client.read("test")
-    #client.read("test")
 
     # delete query should be forwarded to KV-Store
     client.delete("test")
@@ -30,11 +29,12 @@ def main():
     client.read("test_2")
     client.read("test_2")
 
-    # key should get cached after this one (threshold = 3)
+    # key should get cached after this one (threshold > 3)
+    client.read("test_2")
     client.read("test_2")
 
     # delete query forwarded to KV-store
-    client.delete("test")
+    client.delete("test_2")
 
     # key should be cached and hence it will be replied by the switch (since
     # cache invalidation is not implemented yet)

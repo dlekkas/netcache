@@ -285,12 +285,15 @@ control MyEgress(inout headers hdr,
 
 		if (hdr.netcache.isValid()) {
 			if (hdr.netcache.op == READ_QUERY) {
-				vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
-				vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();
-
-
 				// if the bitmap is not full of zeros then we had cache hit
 				bool cache_hit = (meta.vt_bitmap != 0);
+
+				if (cache_hit) {
+					vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
+					vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();
+				}
+
+
 
 				if (!cache_hit) {
 					if (pkt_is_not_mirrored && hdr.udp.srcPort == NETCACHE_PORT) {

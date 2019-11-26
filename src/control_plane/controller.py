@@ -15,6 +15,9 @@ HOTQUERY_MIRROR_SESSION = 100
 NETCACHE_HOT_QUERY = 3
 NETCACHE_KEY_NOT_FOUND = 5
 
+crc32_polinomials = [0x04C11DB7, 0xEDB88320, 0xDB710641, 0x82608EDB,
+                     0x741B8CD7, 0xEB31D82E, 0x0D663B05, 0xBA0DC66B,
+                     0x32583499, 0x992C1A4C, 0x32583499, 0x992C1A4C]
 
 
 class NetcacheHeader(Packet):
@@ -42,14 +45,32 @@ class NCacheController(object):
         self.setup()
 
 
+    # TODO: reset count min sketch registers, bloom filters and counters
+    def reset_registers(self):
+        pass
+
+
     def setup(self):
         if self.cpu_port:
             self.controller.mirroring_add(HOTQUERY_MIRROR_SESSION, self.cpu_port)
+
 
         # spawn new thread to serve incoming udp connections
         # (i.e hot reports from the switch)
         #udp_t = threading.Thread(target=self.hot_reports_loop)
         #udp_t.start()
+
+    def set_crc_custom_hashes(self):
+        i = 0
+        for custom_crc32, width in sorted(self.custom_calcs.items()):
+            self.controller.set_crc32_parameters(custom_crc32,
+                    crc32_polinomials[i], 0xffffffff, 0xffffffff, True, True)
+            i += 1
+
+    def create_hashes(self):
+        self.hashes = []
+        for i in range(self.register_num):
+            self.hashes.append(Crc(32, crc32_polinomials[i], True, 0xffffffff, True, 0xffffffff))
 
 
     def set_value_tables(self):

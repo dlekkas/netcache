@@ -1,6 +1,7 @@
 from p4utils.utils.topology import Topology
 from p4utils.utils.sswitch_API import SimpleSwitchAPI
 from scapy.all import sniff, Packet, Ether, IP, UDP, BitField, Raw
+from crc import Crc
 
 import threading
 import struct

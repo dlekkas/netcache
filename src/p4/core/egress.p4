@@ -296,6 +296,9 @@ control MyEgress(inout headers hdr,
 
 
 				if (!cache_hit) {
+
+					// waiting for the answer of the KV store allows us to
+					// retrieve the actual key-value pair from the reply
 					if (pkt_is_not_mirrored && hdr.udp.srcPort == NETCACHE_PORT) {
 
 						update_count_min_sketch();
@@ -330,4 +333,3 @@ control MyEgress(inout headers hdr,
 		}
 	}
 }
-

@@ -148,6 +148,9 @@ class NCacheController(object):
                         index, self.str_to_int(partial_val))
                 cnt += VTABLE_SLOT_SIZE
 
+        # mark chache entry as valid
+        self.controller.register_write("cache_status", index, 1)
+
         bitmap = self.convert_to_bitmap(bitmaplist, self.vtables_num)
         self.controller.table_add("lookup_table", "set_lookup_metadata",
             [str(self.str_to_int(key))], [str(bitmap), str(index)])
@@ -244,4 +247,3 @@ class NCacheController(object):
 
 if __name__ == "__main__":
     controller = NCacheController('s1').main()
-

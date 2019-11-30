@@ -8,6 +8,12 @@ control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
+    // register storing a bit to indicate whether an element in the cache
+    // is valid or invalid. there are as many entries as slots in our
+    // register array in the egress pipeline. hence we assume for now that
+    // each slot will only store one cached item
+    register<bit<1>>(NETCACHE_ENTRIES) cache_status;
+
 	action drop() {
 		mark_to_drop(standard_metadata);
 	}
@@ -78,12 +84,47 @@ control MyIngress(inout headers hdr,
 	apply {
 
 		if (hdr.netcache.isValid()) {
-			if (hdr.netcache.op == READ_QUERY) {
-				switch(lookup_table.apply().action_run) {
-					set_lookup_metadata: { ret_pkt_to_client(); }  // cache hit
-				}
-			}
-		}
+            switch(lookup_table.apply().action_run) {
+				set_lookup_metadata: {
+
+
+                    // read queries should be answered directly if the respective item
+                    // is in the cache and the corresponding entry is valid
+                    // otherwise we simply forward the packet
+                    if(hdr.netcache.op == READ_QUERY){
+
+                            bit<1> cache_valid;
+                            cache_status.read(cache_valid, (bit<32>) meta.vt_idx);
+                            if(cache_valid == 1) {
+                                ret_pkt_to_client();
+                            }
+
+                    }
+
+                    // a write query is forwarded to the server
+                    // additionally the cache entry is invalidated
+                    // the server will block subsequent writes and update the entry
+                    // in the cache. to notify the server that the entry is cached
+                    // we set a special header
+                    else if(hdr.netcache.op == WRITE_QUERY) {
+
+                        cache_status.write((bit<32>) meta.vt_idx, (bit<1>) 0);
+
+                    }
+
+                    // a delete query is forwarded to the server
+                    // additionally the cache entry is invalidated
+                    // the paper does not specify what we should do additionally
+                    // probably the kv-store should delete the entry and notify the
+                    // controller as well -> perhaps use the mirroring CPU port approach as well
+                    else if (hdr.netcache.op == DELETE_QUERY) {
+
+                    }
+                }
+
+            }
+
+        }
 
 		l2_forward.apply();
 	}

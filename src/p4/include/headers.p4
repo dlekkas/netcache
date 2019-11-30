@@ -80,6 +80,51 @@ header tcp_t{
     bit<16> urgentPtr;
 }
 
+header Tcp_option_end_h {
+    bit<8> kind;
+}
+header Tcp_option_nop_h {
+    bit<8> kind;
+}
+header Tcp_option_ss_h {
+    bit<32> maxSegmentSize;
+}
+header Tcp_option_s_h {
+    bit<8>  kind;
+    bit<8>  len;
+    bit<8>  shift;
+}
+header Tcp_option_sack_p_h {
+    bit<8>         kind;
+    bit<8>         length;
+}
+header Tcp_option_sack_h {
+    bit<8>         kind;
+    bit<8>         length;
+    varbit<256>    sack;
+}
+
+header Tcp_option_timestamp_h {
+    bit<80> timestamp;
+}
+
+header_union Tcp_option_h {
+    Tcp_option_end_h  end;
+    Tcp_option_nop_h  nop;
+    Tcp_option_ss_h   ss;
+    Tcp_option_s_h    s;
+    Tcp_option_sack_p_h sack_p;
+    Tcp_option_sack_h sack;
+    Tcp_option_timestamp_h ts;
+}
+
+// Defines a stack of 10 tcp options
+typedef Tcp_option_h[10] Tcp_option_stack;
+
+header Tcp_option_padding_h {
+    varbit<256> padding;
+}
+
 header udp_t {
 	bit<16> srcPort;
 	bit<16> dstPort;
@@ -95,6 +140,10 @@ header netcache_t {
 	value_t value;
 }
 
+struct fwd_metadata_t {
+    bit<32> l2ptr;
+    bit<24> out_bd;
+}
 
 struct metadata {
 	vtableBitmap_t vt_bitmap;
@@ -106,14 +155,30 @@ struct metadata {
 
 	bit<SKETCH_CELL_BIT_WIDTH> key_cnt;
 	bit<1> hot_query;
+
+    fwd_metadata_t fwd_metadata;
 }
 
 struct headers {
     ethernet_t   ethernet;
     ipv4_t       ipv4;
     tcp_t        tcp;
+    Tcp_option_stack tcp_options_vec;
+    Tcp_option_padding_h tcp_options_padding;
 	udp_t		 udp;
 	netcache_t   netcache;
+}
+
+error {
+    TcpDataOffsetTooSmall,
+    TcpOptionTooLongForHeader,
+    TcpBadSackOptionLength
+}
+
+struct Tcp_option_sack_top
+{
+    bit<8> kind;
+    bit<8> length;
 }
 
 #endif   // HEADERS_P4

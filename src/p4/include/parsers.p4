@@ -3,6 +3,111 @@
 
 #include "headers.p4"
 
+// modified version of https://github.com/jafingerhut/p4-guide/tree/master/tcp-options-parser
+// enables parser to process tcp header options
+parser Tcp_option_parser(packet_in b,
+                         in bit<4> tcp_hdr_data_offset,
+                         out Tcp_option_stack vec,
+                         out Tcp_option_padding_h padding)
+{
+    bit<7> tcp_hdr_bytes_left;
+
+    state start {
+        // RFC 793 - the Data Offset field is the length of the TCP
+        // header in units of 32-bit words.  It must be at least 5 for
+        // the minimum length TCP header, and since it is 4 bits in
+        // size, can be at most 15, for a maximum TCP header length of
+        // 15*4 = 60 bytes.
+        verify(tcp_hdr_data_offset >= 5, error.TcpDataOffsetTooSmall);
+        tcp_hdr_bytes_left = 4 * (bit<7>) (tcp_hdr_data_offset - 5);
+        // always true here: 0 <= tcp_hdr_bytes_left <= 40
+        transition next_option;
+    }
+    state next_option {
+        transition select(tcp_hdr_bytes_left) {
+            0 : accept;  // no TCP header bytes left
+            default : next_option_part2;
+        }
+    }
+    state next_option_part2 {
+        // precondition: tcp_hdr_bytes_left >= 1
+        transition select(b.lookahead<bit<8>>()) {
+            0: parse_tcp_option_end;
+            1: parse_tcp_option_nop;
+            2: parse_tcp_option_ss;
+            3: parse_tcp_option_s;
+            4: parse_tcp_option_sack_p;
+            5: parse_tcp_option_sack;
+            8: parse_tcp_option_timestamp;
+        }
+    }
+    state parse_tcp_option_end {
+        b.extract(vec.next.end);
+        // TBD: This code is an example demonstrating why it would be
+        // useful to have sizeof(vec.next.end) instead of having to
+        // put in a hard-coded length for each TCP option.
+        tcp_hdr_bytes_left = tcp_hdr_bytes_left - 1;
+        transition consume_remaining_tcp_hdr_and_accept;
+    }
+    state consume_remaining_tcp_hdr_and_accept {
+        // A more picky sub-parser implementation would verify that
+        // all of the remaining bytes are 0, as specified in RFC 793,
+        // setting an error and rejecting if not.  This one skips past
+        // the rest of the TCP header without checking this.
+
+        // tcp_hdr_bytes_left might be as large as 40, so multiplying
+        // it by 8 it may be up to 320, which requires 9 bits to avoid
+        // losing any information.
+        b.extract(padding, (bit<32>) (8 * (bit<9>) tcp_hdr_bytes_left));
+        transition accept;
+    }
+    state parse_tcp_option_nop {
+        b.extract(vec.next.nop);
+        tcp_hdr_bytes_left = tcp_hdr_bytes_left - 1;
+        transition next_option;
+    }
+    state parse_tcp_option_ss {
+        verify(tcp_hdr_bytes_left >= 4, error.TcpOptionTooLongForHeader);
+        tcp_hdr_bytes_left = tcp_hdr_bytes_left - 4;
+        b.extract(vec.next.ss);
+        transition next_option;
+    }
+    state parse_tcp_option_s {
+        verify(tcp_hdr_bytes_left >= 3, error.TcpOptionTooLongForHeader);
+        tcp_hdr_bytes_left = tcp_hdr_bytes_left - 3;
+        b.extract(vec.next.s);
+        transition next_option;
+    }
+    state parse_tcp_option_sack_p {
+        verify(tcp_hdr_bytes_left >= 2, error.TcpOptionTooLongForHeader);
+        tcp_hdr_bytes_left = tcp_hdr_bytes_left - 2;
+        b.extract(vec.next.sack_p);
+        transition next_option;
+    }
+    state parse_tcp_option_sack {
+        bit<8> n_sack_bytes = b.lookahead<Tcp_option_sack_top>().length;
+        // I do not have global knowledge of all TCP SACK
+        // implementations, but from reading the RFC, it appears that
+        // the only SACK option lengths that are legal are 2+8*n for
+        // n=1, 2, 3, or 4, so set an error if anything else is seen.
+        verify(n_sack_bytes == 10 || n_sack_bytes == 18 ||
+               n_sack_bytes == 26 || n_sack_bytes == 34,
+               error.TcpBadSackOptionLength);
+        verify(tcp_hdr_bytes_left >= (bit<7>) n_sack_bytes,
+               error.TcpOptionTooLongForHeader);
+        tcp_hdr_bytes_left = tcp_hdr_bytes_left - (bit<7>) n_sack_bytes;
+        b.extract(vec.next.sack, (bit<32>) (8 * n_sack_bytes - 16));
+        transition next_option;
+    }
+
+    state parse_tcp_option_timestamp {
+        verify(tcp_hdr_bytes_left >= 10, error.TcpOptionTooLongForHeader);
+        tcp_hdr_bytes_left = tcp_hdr_bytes_left - 10;
+        b.extract(vec.next.ts);
+        transition next_option;
+    }
+}
+
 parser MyParser(packet_in packet, out headers hdr, inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
 
@@ -29,8 +134,13 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata meta,
 
     state parse_tcp {
         packet.extract(hdr.tcp);
-        transition select(hdr.tcp.dstPort) {
-			NETCACHE_PORT : parse_netcache;
+        Tcp_option_parser.apply(packet, hdr.tcp.dataOffset,
+                                hdr.tcp_options_vec, hdr.tcp_options_padding);
+
+        bit<16> tcp_payload_len = hdr.ipv4.totalLen - (bit<16>) (4*hdr.ipv4.ihl) - (bit<16>) (4*hdr.tcp.dataOffset);
+        transition select(tcp_payload_len, hdr.tcp.dstPort) {
+			(0, _) : accept;
+            (_, NETCACHE_PORT): parse_netcache;
 			default: accept;
 		}
     }
@@ -63,6 +173,8 @@ control MyDeparser(packet_out packet, in headers hdr) {
     	packet.emit(hdr.ethernet);
 		packet.emit(hdr.ipv4);
 		packet.emit(hdr.tcp);
+        packet.emit(hdr.tcp_options_vec);
+        packet.emit(hdr.tcp_options_padding);
 		packet.emit(hdr.udp);
 		packet.emit(hdr.netcache);
 

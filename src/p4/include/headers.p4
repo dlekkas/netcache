@@ -157,6 +157,8 @@ struct metadata {
 	bit<1> hot_query;
 
     fwd_metadata_t fwd_metadata;
+
+    bool cache_valid;
 }
 
 struct headers {

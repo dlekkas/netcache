@@ -288,7 +288,7 @@ control MyEgress(inout headers hdr,
 				// if the bitmap is not full of zeros then we had cache hit
 				bool cache_hit = (meta.vt_bitmap != 0);
 
-				if (cache_hit) {
+				if (cache_hit && meta.cache_valid) {
 					vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
 					vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();
 				}

@@ -93,9 +93,12 @@ control MyIngress(inout headers hdr,
                     // otherwise we simply forward the packet
                     if(hdr.netcache.op == READ_QUERY){
 
-                            bit<1> cache_valid;
-                            cache_status.read(cache_valid, (bit<32>) meta.vt_idx);
-                            if(cache_valid == 1) {
+                            bit<1> cache_valid_bit;
+                            cache_status.read(cache_valid_bit, (bit<32>) meta.vt_idx);
+
+                            meta.cache_valid = cache_valid_bit == 1;
+
+                            if(meta.cache_valid) {
                                 ret_pkt_to_client();
                             }
 

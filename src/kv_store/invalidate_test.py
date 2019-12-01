@@ -13,6 +13,15 @@ def main():
     # should read from server
     client.read("one")
 
+    # answered by cache
+    client.read("two")
+
+    # should invalidate cache
+    client.delete("two")
+
+    # should try to read from server
+    client.read("two")
+
 
 
 

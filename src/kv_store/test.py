@@ -36,8 +36,7 @@ def main():
     # delete query forwarded to KV-store
     client.delete("test_2")
 
-    # key should be cached and hence it will be replied by the switch (since
-    # cache invalidation is not implemented yet)
+    # key should be invalidated in the cache and hence it will be replied by the server
     client.read("test_2")
 
 

@@ -122,6 +122,8 @@ control MyIngress(inout headers hdr,
                     // controller as well -> perhaps use the mirroring CPU port approach as well
                     else if (hdr.netcache.op == DELETE_QUERY) {
 
+                        cache_status.write((bit<32>) meta.vt_idx, (bit<1>) 0);
+
                     }
                 }
 

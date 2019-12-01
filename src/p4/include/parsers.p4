@@ -137,7 +137,7 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata meta,
         Tcp_option_parser.apply(packet, hdr.tcp.dataOffset,
                                 hdr.tcp_options_vec, hdr.tcp_options_padding);
 
-        bit<16> tcp_payload_len = hdr.ipv4.totalLen - (bit<16>) (4*hdr.ipv4.ihl) - (bit<16>) (4*hdr.tcp.dataOffset);
+        bit<16> tcp_payload_len = hdr.ipv4.totalLen - 4 * (bit<16>) hdr.ipv4.ihl - 4 * (bit<16>) hdr.tcp.dataOffset;
         transition select(tcp_payload_len, hdr.tcp.dstPort) {
 			(0, _) : accept;
             (_, NETCACHE_PORT): parse_netcache;

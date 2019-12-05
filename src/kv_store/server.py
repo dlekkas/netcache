@@ -149,5 +149,12 @@ class KVServer:
             else:
                 logging.info('Unsupported query type received from client ' + addr[0] + ":" + str(addr[1]))
 
+
+
+    # populate the running server with key-value pairs from a data file
+    def populate_from_file(f):
+        pass
+
+
 server = KVServer('10.0.0.2', 50000)
 server.activate()

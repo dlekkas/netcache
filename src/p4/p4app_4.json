@@ -26,10 +26,16 @@
   "topology": {
     "assignment_strategy" : "l2",
     "links": [["server1", "s1"],
+			  ["server2", "s1"],
+			  ["server3", "s1"],
+			  ["server4", "s1"],
 			  ["client1", "s1"]],
     "hosts": {
       "server1": { },
-      "client1": { }
+      "server2": { },
+      "server3": { },
+      "server4": { },
+      "client": { }
     },
     "switches": {
       "s1": {

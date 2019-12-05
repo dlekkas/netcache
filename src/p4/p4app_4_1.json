@@ -25,25 +25,19 @@
   },
   "topology": {
     "assignment_strategy" : "l2",
-    "links": [["server1", "s1"],
-			  ["server2", "s1"],
-			  ["server3", "s1"],
-			  ["server4", "s1"],
-			  ["server5", "s1"],
-			  ["server6", "s1"],
-			  ["server7", "s1"],
-			  ["server8", "s1"],
-			  ["client1", "s1"]],
+    "links": [
+		["server1", "s1"],
+		["server2", "s1"],
+		["server3", "s1"],
+		["server4", "s1"],
+		["client1", "s1"]
+	],
     "hosts": {
-      "server1": { },
-      "server2": { },
-      "server3": { },
-      "server4": { },
-      "server5": { },
-      "server6": { },
-      "server7": { },
-      "server8": { },
-      "client": { }
+		"server1": { },
+		"server2": { },
+		"server3": { },
+		"server4": { },
+		"client1": { }
     },
     "switches": {
       "s1": {

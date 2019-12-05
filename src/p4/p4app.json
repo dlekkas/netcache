@@ -25,10 +25,10 @@
   },
   "topology": {
     "assignment_strategy" : "l2",
-    "links": [["client", "s1"], ["server", "s1"]],
+    "links": [["server", "s1"], ["client", "s1"]],
     "hosts": {
-      "client": { },
-      "server": { }
+      "server": { },
+      "client": { }
     },
     "switches": {
       "s1": {

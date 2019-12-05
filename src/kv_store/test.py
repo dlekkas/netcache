@@ -2,7 +2,7 @@ from client_api import NetCacheClient
 
 
 def main():
-    client = NetCacheClient('10.0.0.2', 50000)
+    client = NetCacheClient()
 
     # read should be returned from switch (cached statically)
     client.read("one")

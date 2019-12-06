@@ -14,6 +14,8 @@ logging.basicConfig(
         level=logging.DEBUG,
         datefmt='%d-%m-%Y %H:%M:%S')
 
+NETCACHE_PORT = 50000
+
 NETCACHE_READ_QUERY = 0
 NETCACHE_WRITE_QUERY = 1
 NETCACHE_DELETE_QUERY = 2
@@ -36,7 +38,7 @@ def build_message(op, key, seq=0, value = ""):
 
 class KVServer:
 
-    def __init__(self, host, port, max_listen=10):
+    def __init__(self, host, port=NETCACHE_PORT, max_listen=10):
         # simple in-memory key value store, represented by a dictionary
         self.kv_store = {}
         # server ip address
@@ -156,5 +158,7 @@ class KVServer:
         pass
 
 
-server = KVServer('10.0.0.1', 50000)
+from subprocess import check_output
+server_ip = check_output(['hostname', '--all-ip-addresses'])
+server = KVServer(server_ip)
 server.activate()

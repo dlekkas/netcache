@@ -33,7 +33,7 @@ control MyIngress(inout headers hdr,
 			drop;
 		}
 
-		size = 4;
+		size = 1024;
 		default_action = drop();
 	}
 
@@ -87,36 +87,29 @@ control MyIngress(inout headers hdr,
             switch(lookup_table.apply().action_run) {
 				set_lookup_metadata: {
 
-
-                    // read queries should be answered directly if the respective item
-                    // is in the cache and the corresponding entry is valid
-                    // otherwise we simply forward the packet
                     if(hdr.netcache.op == READ_QUERY){
-
                             bit<1> cache_valid_bit;
                             cache_status.read(cache_valid_bit, (bit<32>) meta.vt_idx);
 
-                            meta.cache_valid = cache_valid_bit == 1;
-
+							// read query should be answered by switch if the key
+							// resides in cache and its entry is valid
+                            meta.cache_valid = (cache_valid_bit == 1);
                             if(meta.cache_valid) {
                                 ret_pkt_to_client();
                             }
-
                     }
 
-                    // a write query is forwarded to the server
-                    // additionally the cache entry is invalidated
+                    // write query is forwarded to key-value server and if the
+					// key resides in cache then its entry is invalidated
+                    else if(hdr.netcache.op == WRITE_QUERY) {
+                        cache_status.write((bit<32>) meta.vt_idx, (bit<1>) 0);
+                    }
                     // the server will block subsequent writes and update the entry
                     // in the cache. to notify the server that the entry is cached
                     // we set a special header
-                    else if(hdr.netcache.op == WRITE_QUERY) {
 
-                        cache_status.write((bit<32>) meta.vt_idx, (bit<1>) 0);
-
-                    }
-
-                    // a delete query is forwarded to the server
-                    // additionally the cache entry is invalidated
+                    // delete query is forwarded to key-value server and if the
+					// key resides in cache then its entry is invalidated
                     // the paper does not specify what we should do additionally
                     // probably the kv-store should delete the entry and notify the
                     // controller as well -> perhaps use the mirroring CPU port approach as well

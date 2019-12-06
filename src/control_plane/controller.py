@@ -74,16 +74,18 @@ class NCacheController(object):
             self.hashes.append(Crc(32, crc32_polinomials[i], True, 0xffffffff, True, 0xffffffff))
 
 
+    # set a static allocation scheme for l2 forwarding where the mac address of
+    # each host is associated with the port connecting this host with the switch
+    def set_forwarding_table(self):
+        for host in self.topo.get_hosts_connected_to(self.sw_name):
+            port = self.topo.node_to_node_port_num(self.sw_name, host)
+            host_mac = self.topo.get_host_mac(host)
+            self.controller.table_add("l2_forward", "set_egress_port", [str(host_mac)], [str(port)])
+
+
     def set_value_tables(self):
-        # TODO(dimlek): do this with for loop maybe
-        self.controller.table_add("vtable_0", "process_array_0", ['1'], [])
-        self.controller.table_add("vtable_1", "process_array_1", ['1'], [])
-        self.controller.table_add("vtable_2", "process_array_2", ['1'], [])
-        self.controller.table_add("vtable_3", "process_array_3", ['1'], [])
-        self.controller.table_add("vtable_4", "process_array_4", ['1'], [])
-        self.controller.table_add("vtable_5", "process_array_5", ['1'], [])
-        self.controller.table_add("vtable_6", "process_array_6", ['1'], [])
-        self.controller.table_add("vtable_7", "process_array_7", ['1'], [])
+        for i in range(self.vtables_num):
+            self.controller.table_add("vtable_" + str(i), "process_array_" + str(i), ['1'], [])
 
 
     # TODO(dimlek): this function manages the mapping between between slots in
@@ -240,6 +242,7 @@ class NCacheController(object):
 
 
     def main(self):
+        self.set_forwarding_table()
         self.set_value_tables()
         self.dummy_populate_vtables()
         self.hot_reports_loop()

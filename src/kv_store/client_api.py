@@ -3,7 +3,7 @@ import sys
 
 NETCACHE_PORT = 50000
 
-N_SERVERS = 1
+N_SERVERS = 4
 MAX_SUPPORTED_SERVERS = 254
 
 
@@ -74,6 +74,9 @@ class NetCacheClient:
         tcps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcps.connect((self.get_node(key), self.port))
         tcps.send(msg)
+
+        status = tcps.recv(1024)
+        # TODO: evaluate the status returned
         tcps.close()
 
     def delete(self, key, seq = 0):
@@ -81,5 +84,8 @@ class NetCacheClient:
         tcps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcps.connect((self.get_node(key), self.port))
         tcps.send(msg)
+
+        status = tcps.recv(1024)
+        # TODO: evaluate the status returned
         tcps.close()
 

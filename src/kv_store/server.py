@@ -19,7 +19,9 @@ NETCACHE_PORT = 50000
 NETCACHE_READ_QUERY = 0
 NETCACHE_WRITE_QUERY = 1
 NETCACHE_DELETE_QUERY = 2
-NETCACHE_KEY_NOT_FOUND = 5
+NETCACHE_KEY_NOT_FOUND = 3
+NETCACHE_UPDATE_COMPLETE = 4
+NETCACHE_DELETE_COMPLETE = 5
 
 
 def convert(val):
@@ -101,8 +103,9 @@ class KVServer:
             if op != NETCACHE_READ_QUERY:
                 logging.info('Unsupported/Invalid query type received from client ' + addr[0])
             else:
-                logging.info('Received READ(' + key + ') from client ' + addr[0] +
-                        ":" + str(addr[1]))
+                logging.info('Received READ(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
+
+                print('Received READ(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
 
                 if key in self.kv_store:
                     val = self.kv_store[key]
@@ -131,33 +134,55 @@ class KVServer:
 
             #transform key to int
             key_s = int.from_bytes(key,'big')
+            seq = int.from_bytes(seq, 'big')
+
             #transform val to string
             value = value.decode("utf-8")
             #transform key to string
             key = key.decode("utf-8").lstrip('\x00')
 
 
-
             if op == NETCACHE_WRITE_QUERY:
-                logging.info('Received WRITE from client ' + addr[0] + ":" + str(addr[1]))
+                logging.info('Received WRITE(' + key + ') from client '
+                        + addr[0] + ":" + str(addr[1]))
 
-                #inserts or updates the value of the respective key
-                self.kv_store[key] = value
+                # if key already exists then it's an update query
+                if key in self.kv_store:
+                    # update the value of the requested key
+                    self.kv_store[key] = value
 
-                # TODO: ?are we supposed to return something?
+                    # inform the switch with appropriate operation field of netcache header
+                    # to update its cache and to validate the key again
+                    msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, val)
+                    conn.sendall(msg)
+                else:
+                    # TODO: should we return something here? probably a status code as data
+                    self.kv_store[key] = value
+
                 conn.close()
 
+
             elif op == NETCACHE_DELETE_QUERY:
-                logging.info('Received DELETE from client ' + addr[0] + ":" + str(addr[1]))
+                logging.info('Received DELETE(' + key + ') from client '
+                        + addr[0] + ":" + str(addr[1]))
 
                 if key in self.kv_store:
+                    # delete the key from the key-value store
                     del self.kv_store[key]
 
-                # TODO: ?are we supposed to return something?
+                    # inform the switch with appropriate operation field of netcache header
+                    # to evict this key from cache
+                    msg = build_message(NETCACHE_DELETE_COMPLETE, key_s, seq)
+                    conn.sendall(msg)
+                else:
+                    # TODO: inform client in some way that key doesn't exist
+                    pass
+
                 conn.close()
 
             else:
-                logging.info('Unsupported query type received from client ' + addr[0] + ":" + str(addr[1]))
+                logging.info('Unsupported query type received from client '
+                        + addr[0] + ":" + str(addr[1]))
 
 
 
@@ -181,7 +206,9 @@ class KVServer:
 
 
 
+
 def main():
+
     from subprocess import check_output
 
     # dynamically get the IP address of the server

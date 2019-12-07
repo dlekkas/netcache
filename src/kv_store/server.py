@@ -3,8 +3,8 @@ import logging
 import threading
 import time
 import sys
+import os
 
-import threading
 
 LOGGING_FILE = 'server.log'
 
@@ -20,6 +20,7 @@ NETCACHE_READ_QUERY = 0
 NETCACHE_WRITE_QUERY = 1
 NETCACHE_DELETE_QUERY = 2
 NETCACHE_KEY_NOT_FOUND = 5
+
 
 def convert(val):
     return int.from_bytes(bytes(val, "utf-8"), "big")
@@ -92,23 +93,26 @@ class KVServer:
             value = netcache_pkt[21:]
 
             #transform key to int
-            key = int.from_bytes(key,'big')
+            key_s = int.from_bytes(key,'big')
             seq = int.from_bytes(seq,'big')
+
+            key = key.decode('utf-8').lstrip('\x00')
 
             if op != NETCACHE_READ_QUERY:
                 logging.info('Unsupported/Invalid query type received from client ' + addr[0])
             else:
-                logging.info('Received READ from client ' + addr[0] + ":" + str(addr[1]))
+                logging.info('Received READ(' + key + ') from client ' + addr[0] +
+                        ":" + str(addr[1]))
 
                 if key in self.kv_store:
                     val = self.kv_store[key]
-                    msg = build_message(NETCACHE_READ_QUERY, key, seq, val)
+                    msg = build_message(NETCACHE_READ_QUERY, key_s, seq, val)
                     self.udpss.sendto(msg, addr)
                 else:
 
                     # TODO: ?what is the behaviour in this case?
                     val = ""
-                    msg = build_message(NETCACHE_KEY_NOT_FOUND, key, seq, val)
+                    msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq, val)
                     self.udpss.sendto(msg, addr)
 
     # serves incoming tcp queries (i.e. put/delete)
@@ -126,9 +130,13 @@ class KVServer:
             value = netcache_pkt[21:]
 
             #transform key to int
-            key = int.from_bytes(key,'big')
+            key_s = int.from_bytes(key,'big')
             #transform val to string
             value = value.decode("utf-8")
+            #transform key to string
+            key = key.decode("utf-8").lstrip('\x00')
+
+
 
             if op == NETCACHE_WRITE_QUERY:
                 logging.info('Received WRITE from client ' + addr[0] + ":" + str(addr[1]))
@@ -154,11 +162,39 @@ class KVServer:
 
 
     # populate the running server with key-value pairs from a data file
-    def populate_from_file(f):
-        pass
+    def populate_from_file(self, file_name):
+        if os.path.exists(file_name):
+            with open(file_name, 'r') as fp:
+                try:
+                    # parse each line and insert the key-value pair into
+                    # the key-value store
+                    for line in fp:
+                        key = line.rstrip('\n').split('=')[0]
+                        val = line.rstrip('\n').split('=')[1]
+                        self.kv_store[key] = val
+                except:
+                    # if a parsing error occurs then we stop parsing the file,
+                    # though pairs added up to the error are not reverted
+                    print("Error: while parsing " + str(file_name))
+        else:
+            print("Error: file " + str(file_name) + " doesn't exist.")
 
 
-from subprocess import check_output
-server_ip = check_output(['hostname', '--all-ip-addresses'])
-server = KVServer(server_ip)
-server.activate()
+
+def main():
+    from subprocess import check_output
+
+    # dynamically get the IP address of the server
+    server_ip = check_output(['hostname', '--all-ip-addresses'])
+    server = KVServer(server_ip)
+
+    # populate the server with all the files given as command line
+    # arguments (Usage: python3 server.py [file1 file2 ...])
+    for data_file in sys.argv[1:]:
+        server.populate_from_file(data_file)
+
+    server.activate()
+
+
+if __name__ == "__main__":
+    main()

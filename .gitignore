@@ -4,6 +4,7 @@ src/p4/log/
 
 # ignore pycache
 src/kv_store/__pycache__/
+src/kv_store/data
 
 # ignore compiled files
 *.p4i

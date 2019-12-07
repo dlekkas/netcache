@@ -7,6 +7,13 @@ import threading
 import struct
 import random
 
+# P4 SWITCH ACTION TABLE NAMES DEFINITIONS
+NETCACHE_LOOKUP_TABLE = "lookup_table"
+
+
+# P4 SWITCH REGISTER NAMES DEFINITIONS
+
+
 VTABLE_NAME_PREFIX = 'vt'
 VTABLE_SLOT_SIZE = 16   # in bytes
 VTABLE_ENTRIES = 65536
@@ -152,11 +159,11 @@ class NCacheController(object):
                         index, self.str_to_int(partial_val))
                 cnt += VTABLE_SLOT_SIZE
 
-        # mark chache entry as valid
+        # mark cache entry as valid
         self.controller.register_write("cache_status", index, 1)
 
         bitmap = self.convert_to_bitmap(bitmaplist, self.vtables_num)
-        self.controller.table_add("lookup_table", "set_lookup_metadata",
+        self.controller.table_add(NETCACHE_LOOKUP_TABLE, "set_lookup_metadata",
             [str(self.str_to_int(key))], [str(bitmap), str(index)])
         print("Inserted key-value pair to cache: ("+key+","+value+")")
 
@@ -200,10 +207,28 @@ class NCacheController(object):
         return words
 
 
-    # TODO(dimlek): implement the logic of evicting a specified key and its associated
-    # value from the cache on the switch (update lookup tables and value registers)
+    # evict given key from the cache by deleting its associated entries in,
+    # action tables of the switch, by deallocating its memory space and by
+    # marking the cache entry as valid once the deletion is completed
     def evict(self, key):
-        pass
+
+        # if key is not in cache then nothing to do
+        if key not in self.key_map:
+            return
+
+        # delete entry from the lookup_table
+        entry_handle = self.controller.get_handle_from_match(
+                NETCACHE_LOOKUP_TABLE, [str(self.str_to_int(key))])
+
+        if entry_handle is not None:
+            self.controller.table_delete(NETCACHE_LOOKUP_TABLE, entry_handle)
+
+        # TODO: deallocate memory space and add it to the free memory pool
+        # for memory management purposes
+        idx, bitmap = self.key_map[key]
+
+        # mark cache entry as valid again (should be the last thing to do)
+        self.controller.register_write("cache_status", idx, 1)
 
 
     # used for testing purposes and static population of cache
@@ -245,8 +270,6 @@ class NCacheController(object):
         elif op == NETCACHE_DELETE_COMPLETE:
             print("Received query to delete key = " + key)
             self.evict(key)
-            # once the key is evicted from cache, the validity
-            # bit of this key on the switch should be set to 1
 
         elif op == NETCACHE_UPDATE_COMPLETE:
             print("Received query to delete key = " + key)

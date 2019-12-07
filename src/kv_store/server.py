@@ -153,7 +153,7 @@ class KVServer:
 
                     # inform the switch with appropriate operation field of netcache header
                     # to update its cache and to validate the key again
-                    msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, val)
+                    msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, value)
                     conn.sendall(msg)
                 else:
                     # TODO: should we return something here? probably a status code as data

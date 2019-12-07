@@ -84,19 +84,24 @@ control MyIngress(inout headers hdr,
 	apply {
 
 		if (hdr.netcache.isValid()) {
+
             switch(lookup_table.apply().action_run) {
+
 				set_lookup_metadata: {
 
                     if(hdr.netcache.op == READ_QUERY){
-                            bit<1> cache_valid_bit;
-                            cache_status.read(cache_valid_bit, (bit<32>) meta.vt_idx);
 
-							// read query should be answered by switch if the key
-							// resides in cache and its entry is valid
-                            meta.cache_valid = (cache_valid_bit == 1);
-                            if(meta.cache_valid) {
-                                ret_pkt_to_client();
-                            }
+						bit<1> cache_valid_bit;
+						cache_status.read(cache_valid_bit, (bit<32>) meta.vt_idx);
+
+						// read query should be answered by switch if the key
+						// resides in cache and its entry is valid
+						meta.cache_valid = (cache_valid_bit == 1);
+
+						if(meta.cache_valid) {
+							ret_pkt_to_client();
+						}
+
                     }
 
                     // write query is forwarded to key-value server and if the
@@ -118,6 +123,7 @@ control MyIngress(inout headers hdr,
                         cache_status.write((bit<32>) meta.vt_idx, (bit<1>) 0);
 
                     }
+
                 }
 
             }

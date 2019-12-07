@@ -1,6 +1,6 @@
 from p4utils.utils.topology import Topology
 from p4utils.utils.sswitch_API import SimpleSwitchAPI
-from scapy.all import sniff, Packet, Ether, IP, UDP, BitField, Raw
+from scapy.all import sniff, Packet, Ether, IP, UDP, TCP, BitField, Raw
 from crc import Crc
 
 import threading
@@ -11,10 +11,12 @@ VTABLE_NAME_PREFIX = 'vt'
 VTABLE_SLOT_SIZE = 16   # in bytes
 VTABLE_ENTRIES = 65536
 
-HOTQUERY_MIRROR_SESSION = 100
+CONTROLLER_MIRROR_SESSION = 100
 
-NETCACHE_HOT_QUERY = 3
-NETCACHE_KEY_NOT_FOUND = 5
+NETCACHE_READ_QUERY = 0
+NETCACHE_KEY_NOT_FOUND = 3
+NETCACHE_UPDATE_COMPLETE = 4
+NETCACHE_DELETE_COMPLETE = 5
 
 crc32_polinomials = [0x04C11DB7, 0xEDB88320, 0xDB710641, 0x82608EDB,
                      0x741B8CD7, 0xEB31D82E, 0x0D663B05, 0xBA0DC66B,
@@ -53,7 +55,7 @@ class NCacheController(object):
 
     def setup(self):
         if self.cpu_port:
-            self.controller.mirroring_add(HOTQUERY_MIRROR_SESSION, self.cpu_port)
+            self.controller.mirroring_add(CONTROLLER_MIRROR_SESSION, self.cpu_port)
 
 
         # spawn new thread to serve incoming udp connections
@@ -200,7 +202,7 @@ class NCacheController(object):
 
     # TODO(dimlek): implement the logic of evicting a specified key and its associated
     # value from the cache on the switch (update lookup tables and value registers)
-    def evict_value(self, key):
+    def evict(self, key):
         pass
 
 
@@ -220,25 +222,44 @@ class NCacheController(object):
     # receives a packet, extracts its netcache header and inserts the reported
     # key value store to the switch cache
     def recv_hot_report(self, pkt):
+
         # extract netcache header information
-        ncache_header = NetcacheHeader(pkt[UDP].payload)
+        if pkt.haslayer(UDP):
+            ncache_header = NetcacheHeader(pkt[UDP].payload)
+        elif pkt.haslayer(TCP):
+            ncache_header = NetcacheHeader(pkt[TCP].payload)
+
         key = self.int_to_packed(ncache_header.key, max_width=128)
         value = self.int_to_packed(ncache_header.value, max_width=1024)
+        op = ncache_header.op
 
-        print("Received message for " + key + "=" + value)
-        # if the netcache header has null value or if the "hot key"
-        # reported doesn't exist then do not update cache
-        if not value or ncache_header.op == NETCACHE_KEY_NOT_FOUND:
-            return
-        # insert the key value pair of the hot report to cache
-        self.insert_value(key,value)
+        if op == NETCACHE_READ_QUERY:
+            print("Received hot report for key = " + key)
+            # if the netcache header has null value or if the "hot key"
+            # reported doesn't exist then do not update cache
+            if not value or ncache_header.op == NETCACHE_KEY_NOT_FOUND:
+                return
+            # insert the key value pair of the hot report to cache
+            self.insert_value(key,value)
+
+        elif op == NETCACHE_DELETE_COMPLETE:
+            print("Received query to delete key = " + key)
+            self.evict(key)
+            # once the key is evicted from cache, the validity
+            # bit of this key on the switch should be set to 1
+
+        elif op == NETCACHE_UPDATE_COMPLETE:
+            print("Received query to delete key = " + key)
+
+        else:
+            print("Error: unrecognized operation field of netcache header")
 
 
     # sniff infinitely the interface connected to the P4 switch and when a valid netcache
     # packet is captured, handle the packet via a callback to recv_hot_report function
     def hot_reports_loop(self):
         cpu_port_intf = str(self.topo.get_cpu_port_intf(self.sw_name))
-        sniff(iface=cpu_port_intf, prn=self.recv_hot_report, filter="udp port 50000")
+        sniff(iface=cpu_port_intf, prn=self.recv_hot_report, filter="port 50000")
 
 
     def main(self):

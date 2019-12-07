@@ -25,7 +25,8 @@ const bit<8> TYPE_UDP = 0x11;
 const bit<8> READ_QUERY = 0x00;
 const bit<8> WRITE_QUERY = 0x01;
 const bit<8> DELETE_QUERY = 0x02;
-const bit<8> HOT_READ_QUERY = 0x03;
+const bit<8> UPDATE_COMPLETE = 0x04;
+const bit<8> DELETE_COMPLETE = 0x05;
 
 /* netcache header field types */
 typedef bit<NETCACHE_KEY_WIDTH> key_t;

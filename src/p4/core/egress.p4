@@ -3,7 +3,7 @@
 
 #include "../include/headers.p4"
 
-#define HOTQUERY_MIRROR_SESSION 100
+#define CONTROLLER_MIRROR_SESSION 100
 #define HOT_KEY_THRESHOLD 3
 
 #define PKT_INSTANCE_TYPE_NORMAL 0
@@ -284,16 +284,16 @@ control MyEgress(inout headers hdr,
     apply {
 
 		if (hdr.netcache.isValid()) {
+
+			// if the bitmap is not full of zeros then we had cache hit
+			bool cache_hit = (meta.vt_bitmap != 0);
+
 			if (hdr.netcache.op == READ_QUERY) {
-				// if the bitmap is not full of zeros then we had cache hit
-				bool cache_hit = (meta.vt_bitmap != 0);
 
 				if (cache_hit && meta.cache_valid) {
 					vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
 					vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();
 				}
-
-
 
 				if (!cache_hit) {
 
@@ -307,7 +307,7 @@ control MyEgress(inout headers hdr,
 							inspect_bloom_filter();
 							if (meta.hot_query == 1) {
 								update_bloom_filter();
-								clone(CloneType.E2E, HOTQUERY_MIRROR_SESSION);
+								clone(CloneType.E2E, CONTROLLER_MIRROR_SESSION);
 							}
 						}
 					}
@@ -315,6 +315,25 @@ control MyEgress(inout headers hdr,
 				} else {
 					// TODO: update per-key counter for each cached item
 				}
+
+			// if the server informs us that the update operation on the key completed
+			// successfully then we forward this packet to the controller to update the
+			// cache and validate the key again
+			} else if (hdr.netcache.op == UPDATE_COMPLETE && cache_hit) {
+
+				if (pkt_is_not_mirrored && hdr.tcp.srcPort == NETCACHE_PORT) {
+					clone(CloneType.E2E, CONTROLLER_MIRROR_SESSION);
+				}
+
+			// if the server informs us that the delete operation on the key completed
+			// successfully then we forward this packet to the controller to update the
+			// cache and validate the key again
+			} else if (hdr.netcache.op == DELETE_COMPLETE && cache_hit) {
+
+				if (pkt_is_not_mirrored && hdr.tcp.srcPort == NETCACHE_PORT) {
+					clone(CloneType.E2E, CONTROLLER_MIRROR_SESSION);
+				}
+
 			}
 
 			// a query should be reported to the controller, if we had a cache miss, if the
@@ -326,7 +345,7 @@ control MyEgress(inout headers hdr,
 				inspect_bloom_filter();
 				if (meta.hot_query == 1) {
 					update_bloom_filter();
-					clone(CloneType.E2E, HOTQUERY_MIRROR_SESSION);
+					clone(CloneType.E2E, CONTROLLER_MIRROR_SESSION);
 				}
 			}
 			*/

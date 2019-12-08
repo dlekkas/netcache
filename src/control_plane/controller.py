@@ -48,6 +48,10 @@ class NCacheController(object):
         self.vtables = []
         self.vtables_num = vtables_num
 
+        # array of bitmap, which marks available slots as 0 bits and
+        # occupied slots as 1 bits
+        self.mem_pool = bytearray(VTABLE_ENTRIES)
+
         # dictionary storing the index and bitmap for the register array
         # in the P4 switch that corresponds to each key
         self.key_map = {}
@@ -109,14 +113,12 @@ class NCacheController(object):
             return False
 
         # dummy logic - needs to change
-        bitmaplist = []
+        bitmap = 0
         for i in range(n_slots):
-            bitmaplist.append('1')
-        for i in range(n_slots, self.vtables_num):
-            bitmaplist.append('0')
+            bitmap = bitmap | (1 << (7 - i))
 
         index = random.randint(0, VTABLE_ENTRIES-1)
-        self.key_map[key] = (index, bitmaplist)
+        self.key_map[key] = (index, bitmap)
         return
 
 
@@ -136,6 +138,15 @@ class NCacheController(object):
         return bitmap
 
 
+    # given a number this function checks whether the k-th bit
+    # is set to 1 or not
+    def bit_is_set(self, n, k):
+        if n & (1 << k):
+            return True
+        else:
+            return False
+
+
     # given a key and its associated value, we update the lookup table on
     # the switch and we also update the registers holding the values with
     # the value given as argument (stored in multiple slots)
@@ -146,14 +157,17 @@ class NCacheController(object):
         if update == False:
             return
 
-        index, bitmaplist = self.key_map[key]
+        index, bitmap = self.key_map[key]
+
         # keep track of number of bytes of the value written so far
         cnt = 0
+
         # store the value of the key in the vtables of the switch while
         # incrementally storing a part of the value if the correspoding
         # bit of the bitmap is set
         for i in range(self.vtables_num):
-            if bitmaplist[i] == '1':
+
+            if self.bit_is_set(bitmap, self.vtables_num - i - 1):
                 partial_val = value[cnt:cnt+VTABLE_SLOT_SIZE]
                 self.controller.register_write(VTABLE_NAME_PREFIX + str(i),
                         index, self.str_to_int(partial_val))
@@ -162,9 +176,9 @@ class NCacheController(object):
         # mark cache entry as valid
         self.controller.register_write("cache_status", index, 1)
 
-        bitmap = self.convert_to_bitmap(bitmaplist, self.vtables_num)
         self.controller.table_add(NETCACHE_LOOKUP_TABLE, "set_lookup_metadata",
             [str(self.str_to_int(key))], [str(bitmap), str(index)])
+
         print("Inserted key-value pair to cache: ("+key+","+value+")")
 
 

@@ -146,6 +146,9 @@ class KVServer:
                 logging.info('Received WRITE(' + key + ') from client '
                         + addr[0] + ":" + str(addr[1]))
 
+                print('Received WRITE(' + key + ') from client '
+                        + addr[0] + ":" + str(addr[1]))
+
                 # if key already exists then it's an update query
                 if key in self.kv_store:
                     # update the value of the requested key
@@ -164,6 +167,9 @@ class KVServer:
 
             elif op == NETCACHE_DELETE_QUERY:
                 logging.info('Received DELETE(' + key + ') from client '
+                        + addr[0] + ":" + str(addr[1]))
+
+                print('Received WRITE(' + key + ') from client '
                         + addr[0] + ":" + str(addr[1]))
 
                 if key in self.kv_store:

@@ -139,7 +139,7 @@ class NCacheController(object):
     # given a key and its associated value, we update the lookup table on
     # the switch and we also update the registers holding the values with
     # the value given as argument (stored in multiple slots)
-    def insert_value(self, key, value):
+    def insert(self, key, value):
         # find where to put the value for given key
         update = self.dummy_fit(key, len(value))
         # if key already exists then stop
@@ -207,6 +207,18 @@ class NCacheController(object):
         return words
 
 
+    # update the value of the given key with the new value given as argument
+    def update(self, key, value):
+        # if key is not in cache then nothing to do
+        if key not in self.key_map:
+            return
+        # update key-value pair by removing old pair and inserting new one
+        # TODO: is there any better way to do this? could this create any
+        # problems in the future?
+        self.evict(key)
+        self.insert(key, value)
+
+
     # evict given key from the cache by deleting its associated entries in,
     # action tables of the switch, by deallocating its memory space and by
     # marking the cache entry as valid once the deletion is completed
@@ -218,17 +230,19 @@ class NCacheController(object):
 
         # delete entry from the lookup_table
         entry_handle = self.controller.get_handle_from_match(
-                NETCACHE_LOOKUP_TABLE, [str(self.str_to_int(key))])
+                NETCACHE_LOOKUP_TABLE, [str(self.str_to_int(key)), ])
 
         if entry_handle is not None:
             self.controller.table_delete(NETCACHE_LOOKUP_TABLE, entry_handle)
 
         # TODO: deallocate memory space and add it to the free memory pool
         # for memory management purposes
-        idx, bitmap = self.key_map[key]
+        old_idx, bitmap = self.key_map[key]
+        del self.key_map[key]
 
         # mark cache entry as valid again (should be the last thing to do)
-        self.controller.register_write("cache_status", idx, 1)
+        self.controller.register_write("cache_status", old_idx, 1)
+
 
 
     # used for testing purposes and static population of cache
@@ -239,14 +253,16 @@ class NCacheController(object):
                        "eight", "nine", "ten", "eleven", "twelve"]
         cnt = 0
         for i in range(11):
-            self.insert_value(test_keys_l[i], test_values_l[i])
+            self.insert(test_keys_l[i], test_values_l[i])
 
 
 
-    # handling reports from the switch corresponding to hot keys - this function
-    # receives a packet, extracts its netcache header and inserts the reported
-    # key value store to the switch cache
-    def recv_hot_report(self, pkt):
+    # handling reports from the switch corresponding to hot keys, updates to
+    # key-value pairs or deletions - this function receives a packet, extracts
+    # its netcache header and manipulates cache based on the operation field
+    # of the netcache header (callback function)
+    def recv_switch_updates(self, pkt):
+        print("Received message from switch")
 
         # extract netcache header information
         if pkt.haslayer(UDP):
@@ -256,33 +272,37 @@ class NCacheController(object):
 
         key = self.int_to_packed(ncache_header.key, max_width=128)
         value = self.int_to_packed(ncache_header.value, max_width=1024)
+
         op = ncache_header.op
 
         if op == NETCACHE_READ_QUERY:
             print("Received hot report for key = " + key)
             # if the netcache header has null value or if the "hot key"
             # reported doesn't exist then do not update cache
-            if not value or ncache_header.op == NETCACHE_KEY_NOT_FOUND:
+            if ncache_header.op == NETCACHE_KEY_NOT_FOUND:
                 return
             # insert the key value pair of the hot report to cache
-            self.insert_value(key,value)
+            self.insert(key, value)
 
         elif op == NETCACHE_DELETE_COMPLETE:
             print("Received query to delete key = " + key)
+            # evict key from cache
             self.evict(key)
 
         elif op == NETCACHE_UPDATE_COMPLETE:
-            print("Received query to delete key = " + key)
+            print("Received query to update key = " + key)
+            # update key with its new value
+            self.update(key, value)
 
         else:
             print("Error: unrecognized operation field of netcache header")
 
 
     # sniff infinitely the interface connected to the P4 switch and when a valid netcache
-    # packet is captured, handle the packet via a callback to recv_hot_report function
+    # packet is captured, handle the packet via a callback to recv_switch_updates function
     def hot_reports_loop(self):
         cpu_port_intf = str(self.topo.get_cpu_port_intf(self.sw_name))
-        sniff(iface=cpu_port_intf, prn=self.recv_hot_report, filter="port 50000")
+        sniff(iface=cpu_port_intf, prn=self.recv_switch_updates, filter="port 50000")
 
 
     def main(self):

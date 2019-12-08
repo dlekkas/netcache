@@ -98,7 +98,7 @@ control MyIngress(inout headers hdr,
 						// resides in cache and its entry is valid
 						meta.cache_valid = (cache_valid_bit == 1);
 
-						if(meta.cache_valid) {
+						if(meta.cache_valid && hdr.udp.srcPort != NETCACHE_PORT) {
 							ret_pkt_to_client();
 						}
 

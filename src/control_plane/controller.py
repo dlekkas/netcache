@@ -50,7 +50,7 @@ class NCacheController(object):
 
         # array of bitmap, which marks available slots as 0 bits and
         # occupied slots as 1 bits
-        self.mem_pool = bytearray(VTABLE_ENTRIES)
+        self.mem_pool = [0] * VTABLE_ENTRIES
 
         # dictionary storing the index and bitmap for the register array
         # in the P4 switch that corresponds to each key
@@ -101,25 +101,41 @@ class NCacheController(object):
             self.controller.table_add("vtable_" + str(i), "process_array_" + str(i), ['1'], [])
 
 
-    # TODO(dimlek): this function manages the mapping between between slots in
-    # register arrays and the cached items by implementing the First Fit algorithm
-    # described in Memory Management section of 4.4.2
-    # currently it randomly chooses where to store values
-    def dummy_fit(self, key, value_size):
+    # this function manages the mapping between between slots in register arrays
+    # and the cached items by implementing the First Fit algorithm described in
+    # Memory Management section of 4.4.2
+    def first_fit(self, key, value_size):
         n_slots = (value_size / VTABLE_SLOT_SIZE) + 1
         if value_size <= 0:
             return False
         if key in self.key_map:
             return False
 
-        # dummy logic - needs to change
-        bitmap = 0
-        for i in range(n_slots):
-            bitmap = bitmap | (1 << (7 - i))
 
-        index = random.randint(0, VTABLE_ENTRIES-1)
-        self.key_map[key] = (index, bitmap)
-        return
+        for idx in range(len(self.mem_pool)):
+            old_bitmap = self.mem_pool[idx]
+            n_zeros = 8 - bin(old_bitmap).count("1")
+
+            # TODO(dimlek): once invalidation logic is properly implemented
+            # this should change to if n_zeros >= n_slots:
+            if n_zeros == 8:
+                cnt = 0
+                bitmap = 0
+                for i in reversed(range(8)):
+                    if cnt >= n_slots:
+                        break
+                    if not self.bit_is_set(old_bitmap, i):
+                        bitmap = bitmap | (1 << i)
+                        cnt += 1
+
+                # mark last n_slots 0 bits as 1 bits
+                self.mem_pool[idx] = old_bitmap | bitmap
+
+                self.key_map[key] = (idx, bitmap)
+
+                return True
+
+        return False
 
 
     # converts a list of 1s and 0s represented as strings and converts it
@@ -152,7 +168,7 @@ class NCacheController(object):
     # the value given as argument (stored in multiple slots)
     def insert(self, key, value):
         # find where to put the value for given key
-        update = self.dummy_fit(key, len(value))
+        update = self.first_fit(key, len(value))
         # if key already exists then stop
         if update == False:
             return
@@ -238,7 +254,6 @@ class NCacheController(object):
     # marking the cache entry as valid once the deletion is completed
     def evict(self, key):
 
-        # if key is not in cache then nothing to do
         if key not in self.key_map:
             return
 
@@ -249,13 +264,15 @@ class NCacheController(object):
         if entry_handle is not None:
             self.controller.table_delete(NETCACHE_LOOKUP_TABLE, entry_handle)
 
-        # TODO: deallocate memory space and add it to the free memory pool
-        # for memory management purposes
-        old_idx, bitmap = self.key_map[key]
+        # delete previous mapping of key to (index, bitmap)
+        idx, bitmap = self.key_map[key]
         del self.key_map[key]
 
+        # deallocate space from memory pool
+        self.mem_pool[idx] = self.mem_pool[idx] ^ bitmap
+
         # mark cache entry as valid again (should be the last thing to do)
-        self.controller.register_write("cache_status", old_idx, 1)
+        self.controller.register_write("cache_status", idx, 1)
 
 
 

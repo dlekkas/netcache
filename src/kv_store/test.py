@@ -13,33 +13,40 @@ def main():
     # client.read("test")
 
     # put query should be forwarded to KV-Store
-    client.put("test", "test_ok")
+    client.put("ctest", "test_okay")
 
     # read should be forwared to KV-Store
-    client.read("test")
-    client.read("test")
+    client.read("ctest")
+    client.read("ctest")
 
     # delete query should be forwarded to KV-Store
-    client.delete("test")
+    client.delete("ctest")
 
     # read should fail for hot key report threshold set to 3 (testing purposes)
-    client.read("test")
+    client.read("ctest")
 
-    client.put("test_2", "test2_ok")
-    client.read("test_2")
-    client.read("test_2")
+    client.put("ctest_2", "test2_ok")
+    client.read("ctest_2")
+    client.read("ctest_2")
 
     # key should get cached after this one (threshold > 3)
-    client.read("test_2")
-    client.read("test_2")
+    client.read("ctest_2")
+    client.read("ctest_2")
+    client.read("ctest_2")
+    client.put("ctest_2", "another")
+    client.read("ctest_2")
 
+
+    """
     # delete query forwarded to KV-store
-    client.delete("test_2")
+    client.delete("ctest_2")
 
     # key should be invalidated in the cache and hence it will be replied by the server
-    client.read("test_2")
+    client.read("ctest_2")
 
-
+    # test prepopulated value
+    client.read("c_s4_key44")
+    """
 
 
 if __name__=="__main__":

@@ -20,3 +20,13 @@ src/kv_store/data
 # ignore json files except p4app.json
 *.json
 !src/p4/p4app*.json
+
+# ignore latex related files
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.fdb_latexmk
+report/*.fls
+report/*.out
+report/*.synctex.gz
+report/*.toc

@@ -36,7 +36,6 @@ def main():
     client.put("ctest_2", "another")
     client.read("ctest_2")
 
-
     """
     # delete query forwarded to KV-store
     client.delete("ctest_2")

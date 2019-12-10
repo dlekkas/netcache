@@ -34,7 +34,7 @@ def build_message(op, key, seq=0, value = ""):
     msg += seq.to_bytes(4, 'big')
     msg += key.to_bytes(16, 'big')
 
-    msg += convert(value).to_bytes(128, 'big')
+    msg += convert(value).to_bytes(64, 'big')
 
     return msg
 

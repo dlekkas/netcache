@@ -17,10 +17,10 @@
 /* netcache value table constant definitions */
 #define NETCACHE_VTABLE_NUM 8
 #define NETCACHE_VTABLE_SIZE_WIDTH 16
-#define NETCACHE_VTABLE_SLOT_WIDTH 128
+#define NETCACHE_VTABLE_SLOT_WIDTH 64
 
 /* maximum number of bits of netcache fields */
-#define NETCACHE_VALUE_WIDTH_MAX 1024
+#define NETCACHE_VALUE_WIDTH_MAX 512
 #define NETCACHE_KEY_WIDTH 128
 
 /* special reserved port for NetCache */

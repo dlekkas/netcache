@@ -16,8 +16,17 @@ def build_message(op, key, seq=0, value = ""):
     msg += op.to_bytes(1, 'big')
     msg += seq.to_bytes(4, 'big')
 
-    msg += convert(key).to_bytes(16, 'big')
-    msg += convert(value).to_bytes(128, 'big')
+    if len(key) <= 8:
+        msg += convert(key).to_bytes(16, 'big')
+    else:
+        print("Error: Key should be up to 8 bytes")
+        return None
+
+    if len(value) <= 64:
+        msg += convert(value).to_bytes(64, 'big')
+    else:
+        print("Error: Value should be up to 64 bytes")
+        return None
 
     return msg
 
@@ -63,14 +72,22 @@ class NetCacheClient:
 
     def read(self, key, seq=0):
         msg = build_message(0, key, seq)
+        if msg is None:
+            return
+
         self.udps.connect((self.get_node(key), self.port))
         self.udps.send(msg)
         data = self.udps.recv(1024)
         self.udps.close
+        #print(data[21:].rstrip(b'\x00').decode("utf-8"))
+        #print(data[21:])#.decode("utf-8"))
         print(data[21:].decode("utf-8"))
 
     def put(self, key, value, seq = 0):
         msg = build_message(1, key, seq, value)
+        if msg is None:
+            return
+
         tcps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcps.connect((self.get_node(key), self.port))
         tcps.send(msg)
@@ -81,6 +98,9 @@ class NetCacheClient:
 
     def delete(self, key, seq = 0):
         msg = build_message(2, key, seq)
+        if msg is None:
+            return
+
         tcps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcps.connect((self.get_node(key), self.port))
         tcps.send(msg)

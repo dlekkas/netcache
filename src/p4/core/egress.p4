@@ -74,7 +74,7 @@ control MyEgress(inout headers hdr,
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt0.read(curr_stage_val, (bit<32>) meta.vt_idx);
 
-		hdr.netcache.value = hdr.netcache.value | ((bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val);
+		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 		valid_stages_num = valid_stages_num + 1;
 	}
 
@@ -85,12 +85,12 @@ control MyEgress(inout headers hdr,
 
 		bit<8> shift_pos = 0;
 		if (valid_stages_num != 0) {
-			shift_pos = (valid_stages_num >> 3) - valid_stages_num;
+			shift_pos = 64 << (valid_stages_num - 1);
 		}
 
-		bit<NETCACHE_VALUE_WIDTH_MAX> tmp =
-			(((bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val) << shift_pos);
-		hdr.netcache.value = hdr.netcache.value | tmp;
+		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
+		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
+
 		valid_stages_num = valid_stages_num + 1;
 	}
 
@@ -100,12 +100,12 @@ control MyEgress(inout headers hdr,
 
 		bit<8> shift_pos = 0;
 		if (valid_stages_num != 0) {
-			shift_pos = (valid_stages_num >> 3) - valid_stages_num;
+			shift_pos = 64 << (valid_stages_num - 1);
 		}
 
-		bit<NETCACHE_VALUE_WIDTH_MAX> tmp =
-			(((bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val) << shift_pos);
-		hdr.netcache.value = hdr.netcache.value | tmp;
+		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
+		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
+
 		valid_stages_num = valid_stages_num + 1;
 	}
 
@@ -115,12 +115,12 @@ control MyEgress(inout headers hdr,
 
 		bit<8> shift_pos = 0;
 		if (valid_stages_num != 0) {
-			shift_pos = (valid_stages_num >> 3) - valid_stages_num;
+			shift_pos = 64 << (valid_stages_num - 1);
 		}
 
-		bit<NETCACHE_VALUE_WIDTH_MAX> tmp =
-			(((bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val) << shift_pos);
-		hdr.netcache.value = hdr.netcache.value | tmp;
+		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
+		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
+
 		valid_stages_num = valid_stages_num + 1;
 	}
 
@@ -130,12 +130,12 @@ control MyEgress(inout headers hdr,
 
 		bit<8> shift_pos = 0;
 		if (valid_stages_num != 0) {
-			shift_pos = (valid_stages_num >> 3) - valid_stages_num;
+			shift_pos = 64 << (valid_stages_num - 1);
 		}
 
-		bit<NETCACHE_VALUE_WIDTH_MAX> tmp =
-			(((bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val) << shift_pos);
-		hdr.netcache.value = hdr.netcache.value | tmp;
+		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
+		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
+
 		valid_stages_num = valid_stages_num + 1;
 	}
 
@@ -145,12 +145,12 @@ control MyEgress(inout headers hdr,
 
 		bit<8> shift_pos = 0;
 		if (valid_stages_num != 0) {
-			shift_pos = (valid_stages_num >> 3) - valid_stages_num;
+			shift_pos = 64 << (valid_stages_num - 1);
 		}
 
-		bit<NETCACHE_VALUE_WIDTH_MAX> tmp =
-			(((bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val) << shift_pos);
-		hdr.netcache.value = hdr.netcache.value | tmp;
+		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
+		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
+
 		valid_stages_num = valid_stages_num + 1;
 	}
 
@@ -160,12 +160,12 @@ control MyEgress(inout headers hdr,
 
 		bit<8> shift_pos = 0;
 		if (valid_stages_num != 0) {
-			shift_pos = (valid_stages_num >> 3) - valid_stages_num;
+			shift_pos = 64 << (valid_stages_num - 1);
 		}
 
-		bit<NETCACHE_VALUE_WIDTH_MAX> tmp =
-			(((bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val) << shift_pos);
-		hdr.netcache.value = hdr.netcache.value | tmp;
+		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
+		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
+
 		valid_stages_num = valid_stages_num + 1;
 	}
 
@@ -175,14 +175,15 @@ control MyEgress(inout headers hdr,
 
 		bit<8> shift_pos = 0;
 		if (valid_stages_num != 0) {
-			shift_pos = (valid_stages_num >> 3) - valid_stages_num;
+			shift_pos = 64 << (valid_stages_num - 1);
 		}
 
-		bit<NETCACHE_VALUE_WIDTH_MAX> tmp =
-			(((bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val) << shift_pos);
-		hdr.netcache.value = hdr.netcache.value | tmp;
+		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
+		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
+
 		valid_stages_num = valid_stages_num + 1;
 	}
+
 
 	table vtable_0 {
 		key = {

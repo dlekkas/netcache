@@ -23,7 +23,7 @@ SKETCH_REGISTERS_NUM = 4
 STATISTICS_REFRESH_INTERVAL = 5.0  # measured in seconds
 
 VTABLE_NAME_PREFIX = 'vt'
-VTABLE_SLOT_SIZE = 16   # in bytes
+VTABLE_SLOT_SIZE = 8   # in bytes
 VTABLE_ENTRIES = 65536
 
 CONTROLLER_MIRROR_SESSION = 100
@@ -41,7 +41,7 @@ crc32_polinomials = [0x04C11DB7, 0xEDB88320, 0xDB710641, 0x82608EDB,
 class NetcacheHeader(Packet):
     name = 'NcachePacket'
     fields_desc = [BitField('op', 0, 8), BitField('seq', 0, 32),
-            BitField('key', 0, 128), BitField('value', 0, 1024)]
+            BitField('key', 0, 128), BitField('value', 0, 512)]
 
 
 class NCacheController(object):
@@ -136,6 +136,7 @@ class NCacheController(object):
     # and the cached items by implementing the First Fit algorithm described in
     # Memory Management section of 4.4.2
     def first_fit(self, key, value_size):
+
         n_slots = (value_size / VTABLE_SLOT_SIZE) + 1
         if value_size <= 0:
             return False
@@ -218,6 +219,7 @@ class NCacheController(object):
                 partial_val = value[cnt:cnt+VTABLE_SLOT_SIZE]
                 self.controller.register_write(VTABLE_NAME_PREFIX + str(i),
                         index, self.str_to_int(partial_val))
+
                 cnt += VTABLE_SLOT_SIZE
 
         # mark cache entry as valid
@@ -240,7 +242,7 @@ class NCacheController(object):
         # add padding with 0x00 if input string size less than int_width
         bytearr = bytearray(int_width - len(x))
         bytearr.extend(x.encode('utf-8'))
-        return struct.unpack(">QQ", bytearr)[1]
+        return struct.unpack(">Q", bytearr)[0]
 
 
     # given an arbitrary sized integer, the max width (in bits) of the integer

@@ -25,7 +25,7 @@ def main():
     # read should fail for hot key report threshold set to 3 (testing purposes)
     client.read("ctest")
 
-    client.put("ctest_2", "test2_ok")
+    client.put("ctest_2", "tOmZmAvVujaXBP8nFm2TX10w291TUDSwKCis7VwjewSvaAEofUBlLirNa")
     client.read("ctest_2")
     client.read("ctest_2")
 
@@ -33,7 +33,9 @@ def main():
     client.read("ctest_2")
     client.read("ctest_2")
     client.read("ctest_2")
-    client.put("ctest_2", "another")
+    #client.put("ctest_2", "another")
+    client.read("ctest_2")
+    client.read("ctest_2")
     client.read("ctest_2")
 
     """

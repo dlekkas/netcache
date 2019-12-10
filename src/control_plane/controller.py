@@ -12,7 +12,15 @@ NETCACHE_LOOKUP_TABLE = "lookup_table"
 
 
 # P4 SWITCH REGISTER NAMES DEFINITIONS
+SKETCH_REG_PREFIX = "sketch"
+BLOOMF_REG_PREFIX = "bloom"
 
+
+BLOOMF_REGISTERS_NUM = 3
+SKETCH_REGISTERS_NUM = 4
+
+
+STATISTICS_REFRESH_INTERVAL = 5.0  # measured in seconds
 
 VTABLE_NAME_PREFIX = 'vt'
 VTABLE_SLOT_SIZE = 16   # in bytes
@@ -46,7 +54,7 @@ class NCacheController(object):
         self.controller = SimpleSwitchAPI(self.thrift_port)
 
         self.custom_calcs = self.controller.get_custom_crc_calcs()
-        self.custom_hashes_num = len(self.custom_calcs)
+        self.sketch_register_num = len(self.custom_calcs)
 
         self.vtables = []
         self.vtables_num = vtables_num
@@ -62,9 +70,23 @@ class NCacheController(object):
         self.setup()
 
 
-    # TODO: reset count min sketch registers, bloom filters and counters
-    def reset_registers(self):
-        pass
+    # periodically reset registers pertaining to query statistics module of the
+    # P4 switch (count-min sketch registers, bloom filters and counters)
+    def periodic_registers_reset(self):
+        t = threading.Timer(STATISTICS_REFRESH_INTERVAL, self.periodic_registers_reset)
+        t.daemon = True
+        t.start()
+
+        # reset bloom filter related registers
+        for i in range(BLOOMF_REGISTERS_NUM):
+            self.controller.register_reset(BLOOMF_REG_PREFIX + str(i+1))
+
+        # reset count min sketch related registers
+        for i in range(SKETCH_REGISTERS_NUM):
+            self.controller.register_reset(SKETCH_REG_PREFIX + str(i+1))
+
+        # TODO(dimlek): reset the value counters when implemented
+        print("[INFO]: Reset query statistics registers.")
 
 
     def setup(self):
@@ -75,6 +97,8 @@ class NCacheController(object):
         self.set_crc_custom_hashes()
         self.create_hashes()
 
+        # set a daemon to periodically reset registers
+        self.periodic_registers_reset()
 
         # spawn new thread to serve incoming udp connections
         # (i.e hot reports from the switch)
@@ -90,7 +114,7 @@ class NCacheController(object):
 
     def create_hashes(self):
         self.hashes = []
-        for i in range(self.custom_hashes_num):
+        for i in range(self.sketch_register_num):
             self.hashes.append(Crc(32, crc32_polinomials[i], True, 0xffffffff, True, 0xffffffff))
 
 

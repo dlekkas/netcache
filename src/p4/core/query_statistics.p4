@@ -3,9 +3,9 @@
 
 
 // BLOOM FILTER REGISTERS
-register<bit<1>>(BLOOM_FILTER_ENTRIES) bloom_arr1;
-register<bit<1>>(BLOOM_FILTER_ENTRIES) bloom_arr2;
-register<bit<1>>(BLOOM_FILTER_ENTRIES) bloom_arr3;
+register<bit<1>>(BLOOM_FILTER_ENTRIES) bloom1;
+register<bit<1>>(BLOOM_FILTER_ENTRIES) bloom2;
+register<bit<1>>(BLOOM_FILTER_ENTRIES) bloom3;
 
 
 #define SKETCH_BUCKET_LENGTH 65535
@@ -32,11 +32,11 @@ action inspect_bloom_filter() {
 
 
 	bit<1> val_1;
-	bloom_arr1.read(val_1, (bit<32>) meta.bloom_idx1);
+	bloom1.read(val_1, (bit<32>) meta.bloom_idx1);
 	bit<1> val_2;
-	bloom_arr2.read(val_2, (bit<32>) meta.bloom_idx2);
+	bloom2.read(val_2, (bit<32>) meta.bloom_idx2);
 	bit<1> val_3;
-	bloom_arr3.read(val_3, (bit<32>) meta.bloom_idx3);
+	bloom3.read(val_3, (bit<32>) meta.bloom_idx3);
 
 	// if the following condition holds true then the key already exists
 	// with high probability in the bloom filter and we won't send it to
@@ -51,9 +51,9 @@ action inspect_bloom_filter() {
 
 action update_bloom_filter() {
 
-	bloom_arr1.write((bit<32>) meta.bloom_idx1, (bit<1>) 1);
-	bloom_arr2.write((bit<32>) meta.bloom_idx2, (bit<1>) 1);
-	bloom_arr3.write((bit<32>) meta.bloom_idx3, (bit<1>) 1);
+	bloom1.write((bit<32>) meta.bloom_idx1, (bit<1>) 1);
+	bloom2.write((bit<32>) meta.bloom_idx2, (bit<1>) 1);
+	bloom3.write((bit<32>) meta.bloom_idx3, (bit<1>) 1);
 
 }
 

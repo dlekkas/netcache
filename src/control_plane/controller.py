@@ -222,8 +222,14 @@ class NCacheController(object):
 
                 cnt += VTABLE_SLOT_SIZE
 
+        # hash the netcache key with the crc32 hash function to generate
+        # the index for validity register
+        crc32_hash_func = Crc(32, 0x04C11DB7, True, 0xffffffff, True, 0xffffffff)
+        to_hash = struct.pack(">Q", self.str_to_int(key))
+        val_idx = crc32_hash_func.bit_by_bit_fast(to_hash) % (VTABLE_ENTRIES * self.vtables_num)
+
         # mark cache entry as valid
-        self.controller.register_write("cache_status", index, 1)
+        self.controller.register_write("cache_status", val_idx, 1)
 
         self.controller.table_add(NETCACHE_LOOKUP_TABLE, "set_lookup_metadata",
             [str(self.str_to_int(key))], [str(bitmap), str(index)])
@@ -304,8 +310,14 @@ class NCacheController(object):
         # deallocate space from memory pool
         self.mem_pool[idx] = self.mem_pool[idx] ^ bitmap
 
+        # to index the validity register, use the crc32 hash function
+        # to generate the index
+        crc32_hash_func = Crc(32, 0x04C11DB7, True, 0xffffffff, True, 0xffffffff)
+        to_hash = struct.pack(">Q", self.str_to_int(key))
+        val_idx = crc32_hash_func.bit_by_bit_fast(to_hash) % (VTABLE_ENTRIES * self.vtables_num)
+
         # mark cache entry as valid again (should be the last thing to do)
-        self.controller.register_write("cache_status", idx, 1)
+        self.controller.register_write("cache_status", val_idx, 1)
 
 
 

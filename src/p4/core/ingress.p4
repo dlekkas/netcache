@@ -12,7 +12,7 @@ control MyIngress(inout headers hdr,
     // is valid or invalid. there are as many entries as slots in our
     // register array in the egress pipeline. hence we assume for now that
     // each slot will only store one cached item
-    register<bit<1>>(NETCACHE_ENTRIES) cache_status;
+    register<bit<1>>(NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM) cache_status;
 
 	action drop() {
 		mark_to_drop(standard_metadata);
@@ -63,6 +63,11 @@ control MyIngress(inout headers hdr,
 	action set_lookup_metadata(vtableBitmap_t bitmap, vtableIdx_t idx) {
 		meta.vt_bitmap = bitmap;
 		meta.vt_idx = idx;
+
+		// TODO(dimlek): what to do with the key that is 16 bytes?
+		// acquire the index for the validity register and the counter register
+		hash(meta.key_idx, HashAlgorithm.crc32, (bit<1>) 0, {(bit<64>) hdr.netcache.key},
+				(bit<KEY_IDX_WIDTH>) NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM);
 	}
 
 	/* define cache lookup table */
@@ -76,7 +81,7 @@ control MyIngress(inout headers hdr,
 			NoAction;
 		}
 
-		size = NETCACHE_ENTRIES;
+		size = NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM;
 		default_action = NoAction;
 	}
 
@@ -92,7 +97,7 @@ control MyIngress(inout headers hdr,
                     if(hdr.netcache.op == READ_QUERY){
 
 						bit<1> cache_valid_bit;
-						cache_status.read(cache_valid_bit, (bit<32>) meta.vt_idx);
+						cache_status.read(cache_valid_bit, (bit<32>) meta.key_idx);
 
 						// read query should be answered by switch if the key
 						// resides in cache and its entry is valid
@@ -107,7 +112,7 @@ control MyIngress(inout headers hdr,
                     // write query is forwarded to key-value server and if the
 					// key resides in cache then its entry is invalidated
                     else if(hdr.netcache.op == WRITE_QUERY) {
-                        cache_status.write((bit<32>) meta.vt_idx, (bit<1>) 0);
+                        cache_status.write((bit<32>) meta.key_idx, (bit<1>) 0);
                     }
                     // the server will block subsequent writes and update the entry
                     // in the cache. to notify the server that the entry is cached
@@ -120,7 +125,7 @@ control MyIngress(inout headers hdr,
                     // controller as well -> perhaps use the mirroring CPU port approach as well
                     else if (hdr.netcache.op == DELETE_QUERY) {
 
-                        cache_status.write((bit<32>) meta.vt_idx, (bit<1>) 0);
+                        cache_status.write((bit<32>) meta.key_idx, (bit<1>) 0);
 
                     }
 

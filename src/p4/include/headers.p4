@@ -19,6 +19,11 @@
 #define NETCACHE_VTABLE_SIZE_WIDTH 16
 #define NETCACHE_VTABLE_SLOT_WIDTH 64
 
+
+/* minpow2(NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM) */
+#define KEY_IDX_WIDTH 20
+#define MAX_KEYS (NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM)
+
 /* maximum number of bits of netcache fields */
 #define NETCACHE_VALUE_WIDTH_MAX 512
 #define NETCACHE_KEY_WIDTH 128
@@ -41,6 +46,7 @@ typedef bit<NETCACHE_KEY_WIDTH> key_t;
 typedef bit<NETCACHE_VALUE_WIDTH_MAX> value_t;
 typedef bit<NETCACHE_VTABLE_SIZE_WIDTH> vtableIdx_t;
 typedef bit<NETCACHE_VTABLE_NUM> vtableBitmap_t;
+typedef bit<KEY_IDX_WIDTH> keyIdx_t;
 
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
@@ -171,6 +177,10 @@ struct metadata {
 	bit<BLOOM_IDX_WIDTH> bloom_idx3;
 
 	bit<SKETCH_CELL_BIT_WIDTH> key_cnt;
+
+	keyIdx_t key_idx;
+
+
 	bit<1> hot_query;
 
     fwd_metadata_t fwd_metadata;

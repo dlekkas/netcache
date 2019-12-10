@@ -134,8 +134,19 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata meta,
 
     state parse_tcp {
         packet.extract(hdr.tcp);
+		meta.tcpLength = hdr.ipv4.totalLen - 4 * (bit<16>) hdr.ipv4.ihl;
+
+		transition select(hdr.tcp.dataOffset, hdr.tcp.dstPort, hdr.tcp.srcPort) {
+			(5, NETCACHE_PORT, _): parse_netcache;
+			(5, _, NETCACHE_PORT): parse_netcache;
+			(5, _, _) : accept;
+			default: parse_tcp_options;
+		}
+
+		/*
         Tcp_option_parser.apply(packet, hdr.tcp.dataOffset,
-                                hdr.tcp_options_vec, hdr.tcp_options_padding);
+                                //hdr.tcp_options_vec, hdr.tcp_options_padding);
+
 
         bit<16> tcp_payload_len = hdr.ipv4.totalLen - 4 * (bit<16>) hdr.ipv4.ihl - 4 * (bit<16>) hdr.tcp.dataOffset;
         transition select(tcp_payload_len, hdr.tcp.dstPort, hdr.tcp.srcPort) {
@@ -144,7 +155,19 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata meta,
             (_, NETCACHE_PORT,_): parse_netcache;
 			default: accept;
 		}
+		*/
     }
+
+	state parse_tcp_options {
+		bit<10> len = ((bit<10>) (hdr.tcp.dataOffset - 5) * 4 * 8);
+		packet.extract(hdr.tcp_options, (bit<32>) len);
+
+		transition select (hdr.tcp.dstPort, hdr.tcp.srcPort) {
+			(NETCACHE_PORT, _) : parse_netcache;
+			(_, NETCACHE_PORT) : parse_netcache;
+			default: accept;
+		}
+	}
 
 	state parse_udp {
 		packet.extract(hdr.udp);
@@ -174,8 +197,9 @@ control MyDeparser(packet_out packet, in headers hdr) {
     	packet.emit(hdr.ethernet);
 		packet.emit(hdr.ipv4);
 		packet.emit(hdr.tcp);
-        packet.emit(hdr.tcp_options_vec);
-        packet.emit(hdr.tcp_options_padding);
+		packet.emit(hdr.tcp_options);
+        //packet.emit(hdr.tcp_options_vec);
+        //packet.emit(hdr.tcp_options_padding);
 		packet.emit(hdr.udp);
 		packet.emit(hdr.netcache);
 

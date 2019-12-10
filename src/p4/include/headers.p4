@@ -81,6 +81,10 @@ header tcp_t{
     bit<16> urgentPtr;
 }
 
+header tcp_options_t {
+	varbit<320> options;
+}
+
 header Tcp_option_end_h {
     bit<8> kind;
 }
@@ -160,14 +164,17 @@ struct metadata {
     fwd_metadata_t fwd_metadata;
 
     bool cache_valid;
+
+	bit<16> tcpLength;
 }
 
 struct headers {
     ethernet_t   ethernet;
     ipv4_t       ipv4;
     tcp_t        tcp;
-    Tcp_option_stack tcp_options_vec;
-    Tcp_option_padding_h tcp_options_padding;
+	tcp_options_t tcp_options;
+    //Tcp_option_stack tcp_options_vec;
+    //Tcp_option_padding_h tcp_options_padding;
 	udp_t		 udp;
 	netcache_t   netcache;
 }

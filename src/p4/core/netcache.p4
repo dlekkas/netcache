@@ -56,6 +56,43 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
                     hdr.netcache.value },
                     hdr.udp.checksum,
                     HashAlgorithm.csum16);
+
+
+		update_checksum(
+			hdr.tcp.isValid() && hdr.netcache.isValid(),
+			{
+				hdr.ipv4.srcAddr,
+				hdr.ipv4.dstAddr,
+				8w0,
+				hdr.ipv4.protocol,
+				meta.tcpLength,
+				hdr.tcp.srcPort,
+				hdr.tcp.dstPort,
+				hdr.tcp.seqNo,
+				hdr.tcp.ackNo,
+				hdr.tcp.dataOffset,
+				hdr.tcp.res,
+				hdr.tcp.cwr,
+				hdr.tcp.ece,
+				hdr.tcp.urg,
+				hdr.tcp.ack,
+				hdr.tcp.psh,
+				hdr.tcp.rst,
+				hdr.tcp.syn,
+				hdr.tcp.fin,
+				hdr.tcp.window,
+				hdr.tcp.urgentPtr,
+				hdr.tcp_options.options,
+				hdr.netcache.op,
+				hdr.netcache.seq,
+				hdr.netcache.key,
+				hdr.netcache.value
+			},
+			hdr.tcp.checksum,
+			HashAlgorithm.csum16);
+
+
+
     }
 }
 

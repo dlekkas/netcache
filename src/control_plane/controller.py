@@ -45,6 +45,9 @@ class NCacheController(object):
         self.cpu_port = self.topo.get_cpu_port_index(self.sw_name)
         self.controller = SimpleSwitchAPI(self.thrift_port)
 
+        self.custom_calcs = self.controller.get_custom_crc_calcs()
+        self.custom_hashes_num = len(self.custom_calcs)
+
         self.vtables = []
         self.vtables_num = vtables_num
 
@@ -68,6 +71,10 @@ class NCacheController(object):
         if self.cpu_port:
             self.controller.mirroring_add(CONTROLLER_MIRROR_SESSION, self.cpu_port)
 
+        # create custom hash functions for count min sketch
+        self.set_crc_custom_hashes()
+        self.create_hashes()
+
 
         # spawn new thread to serve incoming udp connections
         # (i.e hot reports from the switch)
@@ -83,7 +90,7 @@ class NCacheController(object):
 
     def create_hashes(self):
         self.hashes = []
-        for i in range(self.register_num):
+        for i in range(self.custom_hashes_num):
             self.hashes.append(Crc(32, crc32_polinomials[i], True, 0xffffffff, True, 0xffffffff))
 
 

@@ -1,7 +1,15 @@
 #ifndef HEADERS_P4
 #define HEADERS_P4
 
+
+#define BLOOM_FILTER_ENTRIES 4096
+#define BLOOM_IDX_WIDTH 12
+
+
+#define SKETCH_BUCKET_LENGTH 65535
 #define SKETCH_CELL_BIT_WIDTH 16
+#define SKETCH_IDX_WIDTH 16
+
 
 /* netcache size */
 #define NETCACHE_ENTRIES 65536
@@ -158,6 +166,10 @@ struct metadata {
 	// stored here, because packet mirroring is used
 	egressSpec_t out_port;
 
+	bit<BLOOM_IDX_WIDTH> bloom_idx1;
+	bit<BLOOM_IDX_WIDTH> bloom_idx2;
+	bit<BLOOM_IDX_WIDTH> bloom_idx3;
+
 	bit<SKETCH_CELL_BIT_WIDTH> key_cnt;
 	bit<1> hot_query;
 
@@ -166,6 +178,7 @@ struct metadata {
     bool cache_valid;
 
 	bit<16> tcpLength;
+
 }
 
 struct headers {

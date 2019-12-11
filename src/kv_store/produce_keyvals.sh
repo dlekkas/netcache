@@ -64,7 +64,7 @@ for i in $(seq $n_servers); do
 		echo "Error: File $file_name already exists."
 	else
 		for j in $(seq $n_values); do
-			echo "${start_char}_s${i}_key${j}=s${i}_val${j}" >> $file_name
+			echo "${j}=${j}" >> $file_name
 		done
 	fi
 

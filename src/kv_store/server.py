@@ -95,8 +95,6 @@ class KVServer:
         self.tcpss.bind((self.host, self.port))
         self.tcpss.listen(1)
 
-        logging.info('Key-Value store server started listening on port ' + str(self.port))
-
         # spawn new thread that serves incoming udp (read) queries
         server_udp_t = threading.Thread(target=self.handle_client_udp_request)
         server_udp_t.start()

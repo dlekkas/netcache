@@ -29,9 +29,8 @@ control MyEgress(inout headers hdr,
 
 	#include "query_statistics.p4"
 
-	// TODO: declare value tables here, we need 8 value tables and we will
-	// use them to construct the final value that we return to the client.
-	// To construct the final value, we append the value from each tables
+	// per-key counter to keep query frequency of each cached item
+	counter((bit<32>) NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM, CounterType.packets) query_freq_cnt;
 
 	// maintain 8 value tables since we need to spread them across stages
 	// where part of the value is created from each stage (4.4.2 section)
@@ -43,7 +42,6 @@ control MyEgress(inout headers hdr,
 	register<bit<NETCACHE_VTABLE_SLOT_WIDTH>>(NETCACHE_ENTRIES) vt5;
 	register<bit<NETCACHE_VTABLE_SLOT_WIDTH>>(NETCACHE_ENTRIES) vt6;
 	register<bit<NETCACHE_VTABLE_SLOT_WIDTH>>(NETCACHE_ENTRIES) vt7;
-
 
 	// count how many stages actually got triggered (1s on bitmap)
 	// this variable is needed for the shifting logic
@@ -314,7 +312,8 @@ control MyEgress(inout headers hdr,
 					}
 
 				} else {
-					// TODO: update per-key counter for each cached item
+					// update query frequency counter for cached item
+					query_freq_cnt.count((bit<32>) meta.key_idx);
 				}
 
 			// if the server informs us that the update operation on the key completed

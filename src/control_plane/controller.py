@@ -14,13 +14,14 @@ NETCACHE_LOOKUP_TABLE = "lookup_table"
 # P4 SWITCH REGISTER NAMES DEFINITIONS
 SKETCH_REG_PREFIX = "sketch"
 BLOOMF_REG_PREFIX = "bloom"
+CACHED_KEYS_COUNTER = "query_freq_cnt"
 
 
 BLOOMF_REGISTERS_NUM = 3
 SKETCH_REGISTERS_NUM = 4
 
 
-STATISTICS_REFRESH_INTERVAL = 5.0  # measured in seconds
+STATISTICS_REFRESH_INTERVAL = 30.0  # measured in seconds
 
 VTABLE_NAME_PREFIX = 'vt'
 VTABLE_SLOT_SIZE = 8   # in bytes
@@ -70,6 +71,19 @@ class NCacheController(object):
         self.setup()
 
 
+    # debugging purposes
+    def report_counters(self):
+        for key, val in self.key_map.items():
+            crc32_hash_func = Crc(32, 0x04C11DB7, True, 0xffffffff, True, 0xffffffff)
+            to_hash = struct.pack(">Q", self.str_to_int(key))
+            cnt_idx = crc32_hash_func.bit_by_bit_fast(to_hash) % (VTABLE_ENTRIES * self.vtables_num)
+
+            res = self.controller.counter_read(CACHED_KEYS_COUNTER, cnt_idx)
+            if res != 0:
+                print("[COUNTER] key = " + key + " [ " + str(res.packets) + " ]")
+
+
+
     # periodically reset registers pertaining to query statistics module of the
     # P4 switch (count-min sketch registers, bloom filters and counters)
     def periodic_registers_reset(self):
@@ -85,7 +99,9 @@ class NCacheController(object):
         for i in range(SKETCH_REGISTERS_NUM):
             self.controller.register_reset(SKETCH_REG_PREFIX + str(i+1))
 
-        # TODO(dimlek): reset the value counters when implemented
+        # reset counter storing the query frequency of each cached item
+        self.controller.counter_reset(CACHED_KEYS_COUNTER)
+
         print("[INFO]: Reset query statistics registers.")
 
 

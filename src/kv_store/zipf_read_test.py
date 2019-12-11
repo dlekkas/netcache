@@ -4,8 +4,8 @@ import numpy as np
 def main():
     client = NetCacheClient()
 
-    NO_QUERIES = 30
-    MAX_KEY_VAL = 100
+    NO_QUERIES = 4000
+    MAX_KEY_VAL = 2000
 
     ZIPF_PARAM = 2.0
 

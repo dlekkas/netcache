@@ -2,18 +2,20 @@ from client_api import NetCacheClient
 import numpy as np
 
 def main():
-    client = NetCacheClient()
+    client = NetCacheClient(n_servers=4)
 
-    NO_QUERIES = 4000
-    MAX_KEY_VAL = 2000
+    filepath = "data/zipf_sample.txt"
 
-    ZIPF_PARAM = 2.0
+    sample = list()
 
-    keys = np.random.zipf(ZIPF_PARAM, NO_QUERIES)
+    with open(filepath) as fp:
+        line = fp.readline()
+        while line:
+            sample.append(line.strip())
+            line = fp.readline()
 
-    for key in keys:
-        if key <= MAX_KEY_VAL:
-            client.read(str(key))
+    for query in sample:
+        client.read(query)
 
 if __name__=="__main__":
     main()

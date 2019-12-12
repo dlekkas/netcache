@@ -28,8 +28,6 @@ def main():
     #client.put("ctest_2", "tOmZmAvVujaXBP8nFm2TX10w291TUDSwKCis7VwjewSvaAEofUBlLirNa")
     #client.put("ctest_2", "abcdeaaaujaXBP8nFm2TX10w291TUDSwKCis7VwjewSvaAEofUBlaaaNa")
     client.put("ctest_2", "abcdefghijklmnopkalutera")
-    client.put("ctest_2", "123456789alekostxeiroter")
-    client.put("ctest_2", "123456789alelajdsflkjads")
     import time
     time.sleep(0.2)
     client.read("ctest_2")
@@ -41,6 +39,11 @@ def main():
     client.read("ctest_2")
     #client.put("ctest_2", "another")
     client.read("ctest_2")
+    client.read("ctest_2")
+    client.read("ctest_2")
+
+    client.put("ctest_2", "123456789alelajdsflkjads")
+
     client.read("ctest_2")
     client.read("ctest_2")
 

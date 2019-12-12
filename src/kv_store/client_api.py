@@ -79,6 +79,7 @@ class NetCacheClient:
         self.udps.send(msg)
         data = self.udps.recv(1024)
         print(data[21:].decode("utf-8"))
+        #print(data[21:])
 
 
     def put(self, key, value, seq = 0, proto='udp'):

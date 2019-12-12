@@ -159,7 +159,7 @@ class NCacheController(object):
     # Memory Management section of 4.4.2
     def first_fit(self, key, value_size):
 
-        n_slots = (value_size / VTABLE_SLOT_SIZE) + 1
+        n_slots = (value_size / (VTABLE_SLOT_SIZE + 1)) + 1
         if value_size <= 0:
             return False
         if key in self.key_map:
@@ -178,6 +178,7 @@ class NCacheController(object):
                 for i in reversed(range(8)):
                     if cnt >= n_slots:
                         break
+
                     if not self.bit_is_set(old_bitmap, i):
                         bitmap = bitmap | (1 << i)
                         cnt += 1

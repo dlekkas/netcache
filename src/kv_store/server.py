@@ -1,3 +1,4 @@
+from collections import deque
 import socket
 import logging
 import threading
@@ -24,6 +25,7 @@ NETCACHE_UPDATE_COMPLETE = 4
 NETCACHE_DELETE_COMPLETE = 5
 NETCACHED_UPDATE = 6
 NETCACHE_UPDATE_COMPLETE_OK = 7
+NETCACHE_REQUEST_SUCCESS = 10
 
 
 
@@ -57,6 +59,10 @@ class KVServer:
         self.tcpss = None
         # max clients to listen to
         self.max_listen = max_listen
+        # specifies whether the server is blocking for cache updates
+        self.blocking = False
+        # queue to store incoming requests while blocking
+        self.incoming_requests = deque()
 
 
     def activate(self):
@@ -86,11 +92,17 @@ class KVServer:
 
         while True:
 
+            # if server is not currently blocking updates/writes then if there are
+            # requests waiting in the queue then serve those requests, elsewise
+            # serve the new incoming packet
+            if not self.blocking and len(self.incoming_requests) > 0:
+                netcache_pkt, addr = self.incoming_requests.popleft()
+            else:
+                netcache_pkt, addr = self.udpss.recvfrom(1024)
+
             # netcache_pkt is an array of bytes belonging to incoming packet's data
             # the data portion of the packet represents the netcache header, so we
             # can extract all the fields defined in the netcache custom protocol
-
-            netcache_pkt, addr = self.udpss.recvfrom(1024)
 
             op = netcache_pkt[0]
             seq = netcache_pkt[1:5]
@@ -99,12 +111,32 @@ class KVServer:
 
             #transform key to int
             key_s = int.from_bytes(key,'big')
+            key = key.decode('utf-8').lstrip('\x00')
             seq = int.from_bytes(seq,'big')
 
             #transform val to string
             value = value.decode("utf-8")
 
-            key = key.decode('utf-8').lstrip('\x00')
+
+            # if server is blocking to wait for cache to finish updating, then check
+            # if the update is finished or otherwise put the received packet into
+            # queue to serialize writes/updates
+
+            if self.blocking:
+                if op == NETCACHE_UPDATE_COMPLETE_OK:
+                    logging.info('Successfully completed UPDATE(' + key + ') from client '
+                            + addr[0] + ':' + str(addr[1]))
+                    print("Successfuly updated")
+                    # start accepting writes/updates again
+                    self.blocking = False
+                    continue
+
+                elif op != NETCACHE_READ_QUERY:
+                    self.incoming_requests.append((netcache_pkt, addr))
+                    continue
+
+
+
 
             if op == NETCACHE_READ_QUERY:
                 logging.info('Received READ(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
@@ -135,10 +167,18 @@ class KVServer:
                     # update the value of the requested key
                     self.kv_store[key] = value
 
-                    # inform the switch with appropriate operation field of netcache header
-                    # to update its cache and to validate the key again
+                    # reply to client immediately that the request is dispatched
+                    msg = build_message(NETCACHE_REQUEST_SUCCESS, key_s, seq)
+                    self.udpss.sendto(msg, addr)
+
+                    # inform the switch with appropriate operation field of netcache
+                    # header to update its cache and to validate the key again
                     msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, value)
                     self.udpss.sendto(msg, addr)
+
+                    # server now should block until cache is updated before serving further writes/updates
+                    self.blocking = True
+
 
                 else:
                     logging.error('Key exists in cache but not in server (key = ' + key + ')')
@@ -163,6 +203,7 @@ class KVServer:
 
             else:
                 logging.info('Unsupported/Invalid query type received from client ' + addr[0])
+                print('Unsupported query type (received op = ' + str(op) + ')')
 
     # serves incoming tcp queries (i.e. put/delete)
     def handle_client_tcp_request(self):

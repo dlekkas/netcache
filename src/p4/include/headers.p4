@@ -40,6 +40,8 @@ const bit<8> WRITE_QUERY = 0x01;
 const bit<8> DELETE_QUERY = 0x02;
 const bit<8> UPDATE_COMPLETE = 0x04;
 const bit<8> DELETE_COMPLETE = 0x05;
+const bit<8> CACHED_UPDATE = 0x06;
+const bit<8> UPDATE_COMPLETE_OK = 0x07;
 
 /* netcache header field types */
 typedef bit<NETCACHE_KEY_WIDTH> key_t;

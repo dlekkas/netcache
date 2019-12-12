@@ -26,6 +26,8 @@ def main():
     client.read("ctest")
 
     client.put("ctest_2", "tOmZmAvVujaXBP8nFm2TX10w291TUDSwKCis7VwjewSvaAEofUBlLirNa")
+    import time
+    time.sleep(0.2)
     client.read("ctest_2")
     client.read("ctest_2")
 

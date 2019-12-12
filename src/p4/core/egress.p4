@@ -321,7 +321,7 @@ control MyEgress(inout headers hdr,
 			// cache and validate the key again
 			} else if (hdr.netcache.op == UPDATE_COMPLETE && cache_hit) {
 
-				if (pkt_is_not_mirrored && hdr.tcp.srcPort == NETCACHE_PORT) {
+				if (pkt_is_not_mirrored) {
 					clone(CloneType.E2E, CONTROLLER_MIRROR_SESSION);
 				}
 

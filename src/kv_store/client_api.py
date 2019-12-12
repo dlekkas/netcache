@@ -78,23 +78,33 @@ class NetCacheClient:
         self.udps.connect((self.get_node(key), self.port))
         self.udps.send(msg)
         data = self.udps.recv(1024)
-        self.udps.close
-        #print(data[21:].rstrip(b'\x00').decode("utf-8"))
-        #print(data[21:])#.decode("utf-8"))
         print(data[21:].decode("utf-8"))
 
-    def put(self, key, value, seq = 0):
+
+    def put(self, key, value, seq = 0, proto='udp'):
         msg = build_message(1, key, seq, value)
         if msg is None:
             return
 
-        tcps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        tcps.connect((self.get_node(key), self.port))
-        tcps.send(msg)
+        if proto == 'udp':
+            self.udps.connect((self.get_node(key), self.port))
+            self.udps.send(msg)
 
-        status = tcps.recv(1024)
-        # TODO: evaluate the status returned
-        tcps.close()
+            status = self.udps.recv(1024)
+            # TODO: evaluate the status returned
+
+        elif proto == 'tcp':
+            tcps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            tcps.connect((self.get_node(key), self.port))
+            tcps.send(msg)
+
+            status = tcps.recv(1024)
+            # TODO: evaluate the status returned
+
+            tcps.close()
+        else:
+            print('Protocol for write (' + proto + ') unsupported')
+
 
     def delete(self, key, seq = 0):
         msg = build_message(2, key, seq)

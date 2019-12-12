@@ -22,6 +22,9 @@ NETCACHE_DELETE_QUERY = 2
 NETCACHE_KEY_NOT_FOUND = 3
 NETCACHE_UPDATE_COMPLETE = 4
 NETCACHE_DELETE_COMPLETE = 5
+NETCACHED_UPDATE = 6
+NETCACHE_UPDATE_COMPLETE_OK = 7
+
 
 
 def convert(val):
@@ -98,11 +101,12 @@ class KVServer:
             key_s = int.from_bytes(key,'big')
             seq = int.from_bytes(seq,'big')
 
+            #transform val to string
+            value = value.decode("utf-8")
+
             key = key.decode('utf-8').lstrip('\x00')
 
-            if op != NETCACHE_READ_QUERY:
-                logging.info('Unsupported/Invalid query type received from client ' + addr[0])
-            else:
+            if op == NETCACHE_READ_QUERY:
                 logging.info('Received READ(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
 
                 print('Received READ(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
@@ -117,6 +121,48 @@ class KVServer:
                     val = ""
                     msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq, val)
                     self.udpss.sendto(msg, addr)
+
+
+            elif op == NETCACHED_UPDATE:
+                logging.info('Received UPDATE(' + key + ') from client '
+                        + addr[0] + ":" + str(addr[1]))
+
+                print('Received UPDATE(' + key + ') from client '
+                        + addr[0] + ":" + str(addr[1]))
+
+                # if key already exists in server then it's a valid update query
+                if key in self.kv_store:
+                    # update the value of the requested key
+                    self.kv_store[key] = value
+
+                    # inform the switch with appropriate operation field of netcache header
+                    # to update its cache and to validate the key again
+                    msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, value)
+                    self.udpss.sendto(msg, addr)
+
+                else:
+                    logging.error('Key exists in cache but not in server (key = ' + key + ')')
+                    print('Error: Key exists in cache but not in server (key = ' + key + ')')
+
+
+
+
+            elif op == NETCACHE_WRITE_QUERY:
+                logging.info('Received WRITE(' + key + ') from client '
+                        + addr[0] + ":" + str(addr[1]))
+
+                print('Received WRITE(' + key + ') from client '
+                        + addr[0] + ":" + str(addr[1]))
+
+                # write the value of the requested key
+                self.kv_store[key] = value
+
+                # reply back to client that write was successful
+                msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, value)
+                self.udpss.sendto(msg, addr)
+
+            else:
+                logging.info('Unsupported/Invalid query type received from client ' + addr[0])
 
     # serves incoming tcp queries (i.e. put/delete)
     def handle_client_tcp_request(self):
@@ -142,25 +188,20 @@ class KVServer:
             key = key.decode("utf-8").lstrip('\x00')
 
 
-            if op == NETCACHE_WRITE_QUERY:
+            if op == NETCACHE_WRITE_QUERY or op == NETCACHED_UPDATE:
                 logging.info('Received WRITE(' + key + ') from client '
                         + addr[0] + ":" + str(addr[1]))
 
                 print('Received WRITE(' + key + ') from client '
                         + addr[0] + ":" + str(addr[1]))
 
-                # if key already exists then it's an update query
-                if key in self.kv_store:
-                    # update the value of the requested key
-                    self.kv_store[key] = value
+                # update the value of the requested key
+                self.kv_store[key] = value
 
-                    # inform the switch with appropriate operation field of netcache header
-                    # to update its cache and to validate the key again
-                    msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, value)
-                    conn.sendall(msg)
-                else:
-                    # TODO: should we return something here? probably a status code as data
-                    self.kv_store[key] = value
+                # inform the switch with appropriate operation field of netcache header
+                # to update its cache and to validate the key again
+                msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, value)
+                conn.sendall(msg)
 
                 conn.close()
 

@@ -40,7 +40,7 @@ control MyIngress(inout headers hdr,
 	 /* update the packet header by swapping the source and destination addresses
 	  * and ports in L2-L4 header fields in order to make the packet ready to
 	  * return to the client */
-	action ret_pkt_to_client() {
+	action ret_pkt_to_sender() {
 		macAddr_t macTmp;
 		macTmp = hdr.ethernet.srcAddr;
 		hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
@@ -51,10 +51,17 @@ control MyIngress(inout headers hdr,
 		hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
 		hdr.ipv4.dstAddr = ipTmp;
 
-		bit<16> udpPortTmp;
-		udpPortTmp = hdr.udp.srcPort;
-		hdr.udp.srcPort = hdr.udp.dstPort;
-		hdr.udp.dstPort = udpPortTmp;
+		bit<16> portTmp;
+		if (hdr.udp.isValid()) {
+			portTmp = hdr.udp.srcPort;
+			hdr.udp.srcPort = hdr.udp.dstPort;
+			hdr.udp.dstPort = portTmp;
+		} else if (hdr.tcp.isValid()) {
+			portTmp = hdr.tcp.srcPort;
+			hdr.tcp.srcPort = hdr.tcp.dstPort;
+			hdr.tcp.dstPort = portTmp;
+		}
+
 	}
 
 
@@ -63,6 +70,9 @@ control MyIngress(inout headers hdr,
 	action set_lookup_metadata(vtableBitmap_t bitmap, vtableIdx_t idx) {
 		meta.vt_bitmap = bitmap;
 		meta.vt_idx = idx;
+
+		// TODO(dimlek): add validity index from the controller using a pool of ids
+		// to avoid hash collisions
 
 		// TODO(dimlek): what to do with the key that is 16 bytes?
 		// acquire the index for the validity register and the counter register
@@ -90,6 +100,16 @@ control MyIngress(inout headers hdr,
 
 		if (hdr.netcache.isValid()) {
 
+			// if it's an update query then ensure that the switch will
+			// forward the packet back to the server to complete the
+			// cache coherency handshake
+
+			/*
+			if (hdr.netcache.op == UPDATE_COMPLETE) {
+				ret_pkt_to_sender();
+			}
+			*/
+
             switch(lookup_table.apply().action_run) {
 
 				set_lookup_metadata: {
@@ -104,7 +124,7 @@ control MyIngress(inout headers hdr,
 						meta.cache_valid = (cache_valid_bit == 1);
 
 						if(meta.cache_valid && hdr.udp.srcPort != NETCACHE_PORT) {
-							ret_pkt_to_client();
+							ret_pkt_to_sender();
 						}
 
                     }
@@ -113,6 +133,8 @@ control MyIngress(inout headers hdr,
 					// key resides in cache then its entry is invalidated
                     else if(hdr.netcache.op == WRITE_QUERY) {
                         cache_status.write((bit<32>) meta.key_idx, (bit<1>) 0);
+
+						hdr.netcache.op = CACHED_UPDATE;
                     }
                     // the server will block subsequent writes and update the entry
                     // in the cache. to notify the server that the entry is cached

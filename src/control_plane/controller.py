@@ -91,6 +91,12 @@ class NCacheController(object):
         t.daemon = True
         t.start()
 
+
+        # TODO(dimlek): before reseting registers check if the cache is
+        # utilized above a threshold (e.g 80%) and if it is then use the
+        # REDIS LFU eviction policy, where we sample the value counters
+        # and we remove the min K of them
+
         # reset bloom filter related registers
         for i in range(BLOOMF_REGISTERS_NUM):
             self.controller.register_reset(BLOOMF_REG_PREFIX + str(i+1))

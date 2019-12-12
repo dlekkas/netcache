@@ -37,7 +37,7 @@ def main():
     client.read("ctest_2")
     client.read("ctest_2")
     client.read("ctest_2")
-    #client.put("ctest_2", "another")
+    client.put("ctest_2", "another")
     client.read("ctest_2")
     client.read("ctest_2")
     client.read("ctest_2")

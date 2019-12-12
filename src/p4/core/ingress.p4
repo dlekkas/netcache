@@ -17,8 +17,10 @@ control MyIngress(inout headers hdr,
 		standard_metadata.egress_spec = port;
 	}
 
-	/* Simple l2 forwarding logic for testing purposes */
+
+	/* Simple l2 forwarding logic */
 	table l2_forward {
+
 		key = {
 			hdr.ethernet.dstAddr: exact;
 		}
@@ -30,12 +32,14 @@ control MyIngress(inout headers hdr,
 
 		size = 1024;
 		default_action = drop();
+
 	}
 
 	 /* update the packet header by swapping the source and destination addresses
 	  * and ports in L2-L4 header fields in order to make the packet ready to
-	  * return to the client */
+	  * return to the sender (tcp is more subtle than just swapping addresses) */
 	action ret_pkt_to_sender() {
+
 		macAddr_t macTmp;
 		macTmp = hdr.ethernet.srcAddr;
 		hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
@@ -60,23 +64,18 @@ control MyIngress(inout headers hdr,
 	}
 
 
-	/* store bitmap and index of value table as metadata to have them available at
-	 * egress pipeline where the value tables reside */
-	action set_lookup_metadata(vtableBitmap_t bitmap, vtableIdx_t idx) {
-		meta.vt_bitmap = bitmap;
-		meta.vt_idx = idx;
+	/* store metadata for a given key to find its values and index it properly */
+	action set_lookup_metadata(vtableBitmap_t vt_bitmap, vtableIdx_t vt_idx, keyIdx_t key_idx) {
 
-		// TODO(dimlek): add validity index from the controller using a pool of ids
-		// to avoid hash collisions
+		meta.vt_bitmap = vt_bitmap;
+		meta.vt_idx = vt_idx;
+		meta.key_idx = key_idx;
 
-		// TODO(dimlek): what to do with the key that is 16 bytes?
-		// acquire the index for the validity register and the counter register
-		hash(meta.key_idx, HashAlgorithm.crc32, (bit<1>) 0, {(bit<64>) hdr.netcache.key},
-				(bit<KEY_IDX_WIDTH>) NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM);
 	}
 
 	/* define cache lookup table */
 	table lookup_table {
+
 		key = {
 			hdr.netcache.key : exact;
 		}
@@ -88,6 +87,7 @@ control MyIngress(inout headers hdr,
 
 		size = NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM;
 		default_action = NoAction;
+
 	}
 
 

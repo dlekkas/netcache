@@ -17,7 +17,7 @@
 /* netcache value table constant definitions */
 #define NETCACHE_VTABLE_NUM 8
 #define NETCACHE_VTABLE_SIZE_WIDTH 16
-#define NETCACHE_VTABLE_SLOT_WIDTH 64
+#define NETCACHE_VTABLE_SLOT_WIDTH 64    // in bits
 
 
 /* minpow2(NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM) */
@@ -169,10 +169,6 @@ struct fwd_metadata_t {
 struct metadata {
 	vtableBitmap_t vt_bitmap;
 	vtableIdx_t vt_idx;
-
-	// TODO(dimlek): routing metadata information should also be
-	// stored here, because packet mirroring is used
-	egressSpec_t out_port;
 
 	bit<BLOOM_IDX_WIDTH> bloom_idx1;
 	bit<BLOOM_IDX_WIDTH> bloom_idx2;

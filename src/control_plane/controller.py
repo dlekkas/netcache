@@ -30,7 +30,8 @@ VTABLE_ENTRIES = 65536
 CONTROLLER_MIRROR_SESSION = 100
 
 NETCACHE_READ_QUERY = 0
-NETCACHE_KEY_NOT_FOUND = 3
+NETCACHE_HOT_READ_QUERY = 3
+NETCACHE_KEY_NOT_FOUND = 20  # ???
 NETCACHE_UPDATE_COMPLETE = 4
 NETCACHE_DELETE_COMPLETE = 5
 
@@ -76,17 +77,26 @@ class NCacheController(object):
 
         self.setup()
 
+        #self.out_of_band_test()
+
+
+    def out_of_band_test(self):
+        print('Out of band test')
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            sock.connect('/tmp/what_a_night.s')
+        except socket.error as msg:
+            print(msg)
+            sys.exit(1)
+
+        message = "hello"
+        sock.sendall(message)
+
 
     # reports the value of counters for each cached key
     # (used only for debugging purposes)
     def report_counters(self):
         for key, val in self.key_map.items():
-            """
-            crc32_hash_func = Crc(32, 0x04C11DB7, True, 0xffffffff, True, 0xffffffff)
-            to_hash = struct.pack(">Q", self.str_to_int(key))
-            cnt_idx = crc32_hash_func.bit_by_bit_fast(to_hash) % (VTABLE_ENTRIES * self.vtables_num)
-            """
-
             vt_idx, bitmap, key_idx = val
 
             res = self.controller.counter_read(CACHED_KEYS_COUNTER, key_idx)
@@ -252,12 +262,6 @@ class NCacheController(object):
 
                 cnt += VTABLE_SLOT_SIZE
 
-        # hash the netcache key with the crc32 hash function to generate
-        # the index for validity register
-        crc32_hash_func = Crc(32, 0x04C11DB7, True, 0xffffffff, True, 0xffffffff)
-        to_hash = struct.pack(">Q", self.str_to_int(key))
-        val_idx = crc32_hash_func.bit_by_bit_fast(to_hash) % (VTABLE_ENTRIES * self.vtables_num)
-
         # allocate an id from the pool to index the counter and validity register
         # (we take the last element of list because in python list is implemented
         # to optimize for inserting and removing elements from the end of the list)
@@ -280,8 +284,7 @@ class NCacheController(object):
     # (seems hacky due to restriction to use python2.7)
     def str_to_int(self, x, int_width=VTABLE_SLOT_SIZE):
         if len(x) > int_width:
-            # TODO(dimlek): error message needed here
-            print "Overflow"
+            print "Error: Overflow while converting string to int"
 
         # add padding with 0x00 if input string size less than int_width
         bytearr = bytearray(int_width - len(x))
@@ -343,20 +346,16 @@ class NCacheController(object):
         if entry_handle is not None:
             self.controller.table_delete(NETCACHE_LOOKUP_TABLE, entry_handle)
 
-        # delete previous mapping of key to (index, bitmap)
+        # delete mapping of key from controller's dictionary
         vt_idx, bitmap, key_idx = self.key_map[key]
         del self.key_map[key]
 
         # deallocate space from memory pool
         self.mem_pool[vt_idx] = self.mem_pool[vt_idx] ^ bitmap
 
-        """
-        # to index the validity register, use the crc32 hash function
-        # to generate the index
-        crc32_hash_func = Crc(32, 0x04C11DB7, True, 0xffffffff, True, 0xffffffff)
-        to_hash = struct.pack(">Q", self.str_to_int(key))
-        val_idx = crc32_hash_func.bit_by_bit_fast(to_hash) % (VTABLE_ENTRIES * self.vtables_num)
-        """
+        # free the id used to index the validity/counter register and append
+        # it back to the id pool of the controller
+        self.ids_pool.append(key_idx)
 
         # mark cache entry as valid again (should be the last thing to do)
         self.controller.register_write("cache_status", key_idx, 1)
@@ -393,7 +392,7 @@ class NCacheController(object):
 
         op = ncache_header.op
 
-        if op == NETCACHE_READ_QUERY:
+        if op == NETCACHE_HOT_READ_QUERY:
             print("Received hot report for key = " + key)
             # if the netcache header has null value or if the "hot key"
             # reported doesn't exist then do not update cache

@@ -3,6 +3,24 @@
 
 #include "../include/headers.p4"
 
+#define CONTROLLER_MIRROR_SESSION 100
+
+#define pkt_instance_type_normal 0
+#define pkt_instance_type_ingress_clone 1
+#define pkt_instance_type_egress_clone 2
+#define pkt_instance_type_coalesced 3
+#define pkt_instance_type_ingress_recirc 4
+#define pkt_instance_type_replication 5
+#define pkt_instance_type_resubmit 6
+
+#define pkt_is_mirrored \
+	((standard_metadata.instance_type != pkt_instance_type_normal) && \
+	 (standard_metadata.instance_type != pkt_instance_type_replication))
+
+#define pkt_is_not_mirrored \
+	 ((standard_metadata.instance_type == pkt_instance_type_normal) || \
+	  (standard_metadata.instance_type == pkt_instance_type_replication))
+
 
 control MyIngress(inout headers hdr,
                   inout metadata meta,
@@ -352,7 +370,7 @@ control MyIngress(inout headers hdr,
 
 				set_lookup_metadata: {
 
-                    if(hdr.netcache.op == READ_QUERY){
+                    if (hdr.netcache.op == READ_QUERY){
 
 						bit<1> cache_valid_bit;
 						cache_status.read(cache_valid_bit, (bit<32>) meta.key_idx);
@@ -377,9 +395,10 @@ control MyIngress(inout headers hdr,
 
                     }
 
+
 					// if the key of the write query exists in the cache then we should inform
 					// the controller to initiate the 3-way cache coherency handshake
-                    else if(hdr.netcache.op == WRITE_QUERY) {
+                    else if (hdr.netcache.op == WRITE_QUERY) {
 
                         cache_status.write((bit<32>) meta.key_idx, (bit<1>) 0);
 
@@ -489,6 +508,19 @@ control MyIngress(inout headers hdr,
 					}
 
 				}
+
+				NoAction: {
+
+					if (hdr.netcache.op == HOT_READ_QUERY) {
+
+						// inform the controller for the hot key to insert to cache
+						if (pkt_is_not_mirrored) {
+							clone(CloneType.I2E, CONTROLLER_MIRROR_SESSION);
+						}
+
+					}
+				}
+
 
             }
 

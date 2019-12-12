@@ -20,12 +20,14 @@ NETCACHE_PORT = 50000
 NETCACHE_READ_QUERY = 0
 NETCACHE_WRITE_QUERY = 1
 NETCACHE_DELETE_QUERY = 2
-NETCACHE_KEY_NOT_FOUND = 3
+NETCACHE_HOT_READ_QUERY = 3
 NETCACHE_UPDATE_COMPLETE = 4
 NETCACHE_DELETE_COMPLETE = 5
 NETCACHED_UPDATE = 6
 NETCACHE_UPDATE_COMPLETE_OK = 7
+
 NETCACHE_REQUEST_SUCCESS = 10
+NETCACHE_KEY_NOT_FOUND = 20   # ???
 
 
 
@@ -64,6 +66,10 @@ class KVServer:
         # queue to store incoming requests while blocking
         self.incoming_requests = deque()
 
+        # unix socket for out of band communication with controller
+        # (used for cache coherency purposes)
+        self.unixss = None
+
 
     def activate(self):
 
@@ -85,6 +91,17 @@ class KVServer:
         # spawn new thread that serves incoming tcp (put/delete) queries
         server_tcp_t = threading.Thread(target=self.handle_client_tcp_request)
         server_tcp_t.start()
+
+        """
+        sock= socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.bind('/tmp/what_a_night.s')
+        sock.listen(1)
+
+        conn, addr = sock.accept()
+        data = conn.recv(1024)
+        print(data)
+        print('Success')
+        """
 
 
     # handles incoming udp queries (i.e. read queries)
@@ -137,7 +154,6 @@ class KVServer:
 
 
 
-
             if op == NETCACHE_READ_QUERY:
                 logging.info('Received READ(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
 
@@ -149,6 +165,20 @@ class KVServer:
                     self.udpss.sendto(msg, addr)
                 else:
 
+                    # TODO: ?what is the behaviour in this case?
+                    val = ""
+                    msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq, val)
+                    self.udpss.sendto(msg, addr)
+
+
+            elif op == NETCACHE_HOT_READ_QUERY:
+                print('Received HOTREAD(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
+
+                if key in self.kv_store:
+                    val = self.kv_store[key]
+                    msg = build_message(NETCACHE_HOT_READ_QUERY, key_s, seq, val)
+                    self.udpss.sendto(msg, addr)
+                else:
                     # TODO: ?what is the behaviour in this case?
                     val = ""
                     msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq, val)
@@ -198,7 +228,7 @@ class KVServer:
                 self.kv_store[key] = value
 
                 # reply back to client that write was successful
-                msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, value)
+                msg = build_message(NETCACHE_REQUEST_SUCCESS, key_s, seq, value)
                 self.udpss.sendto(msg, addr)
 
             else:

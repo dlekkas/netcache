@@ -47,7 +47,7 @@ control MyEgress(inout headers hdr,
 
 					// waiting for the answer of the KV store allows us to
 					// retrieve the actual key-value pair from the reply
-					if (pkt_is_not_mirrored && hdr.udp.srcPort == NETCACHE_PORT) {
+					if (pkt_is_not_mirrored && hdr.udp.srcPort != NETCACHE_PORT) {
 
 						update_count_min_sketch();
 						if (meta.key_cnt >= HOT_KEY_THRESHOLD) {
@@ -55,7 +55,13 @@ control MyEgress(inout headers hdr,
 							inspect_bloom_filter();
 							if (meta.hot_query == 1) {
 								update_bloom_filter();
-								clone(CloneType.E2E, CONTROLLER_MIRROR_SESSION);
+
+								// inform the server that he will receive a read query
+								// for a hot key (this is needed, so he will block until
+								// the insertion in cache is completed) - cache coherence
+								hdr.netcache.op = HOT_READ_QUERY;
+
+								//clone(CloneType.E2E, CONTROLLER_MIRROR_SESSION);
 							}
 						}
 					}

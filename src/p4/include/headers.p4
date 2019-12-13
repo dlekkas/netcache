@@ -1,6 +1,26 @@
 #ifndef HEADERS_P4
 #define HEADERS_P4
 
+#define CONTROLLER_MIRROR_SESSION 100
+
+#define pkt_instance_type_normal 0
+#define pkt_instance_type_ingress_clone 1
+#define pkt_instance_type_egress_clone 2
+#define pkt_instance_type_coalesced 3
+#define pkt_instance_type_ingress_recirc 4
+#define pkt_instance_type_replication 5
+#define pkt_instance_type_resubmit 6
+
+#define pkt_is_mirrored \
+	((standard_metadata.instance_type != pkt_instance_type_normal) && \
+	 (standard_metadata.instance_type != pkt_instance_type_replication))
+
+#define pkt_is_not_mirrored \
+	 ((standard_metadata.instance_type == pkt_instance_type_normal) || \
+	  (standard_metadata.instance_type == pkt_instance_type_replication))
+
+
+#define HOT_KEY_THRESHOLD 3
 
 #define BLOOM_FILTER_ENTRIES 4096
 #define BLOOM_IDX_WIDTH 12

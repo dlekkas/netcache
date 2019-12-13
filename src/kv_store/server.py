@@ -1,4 +1,5 @@
 from collections import deque
+
 import socket
 import logging
 import threading
@@ -29,6 +30,9 @@ NETCACHE_UPDATE_COMPLETE_OK = 7
 NETCACHE_REQUEST_SUCCESS = 10
 NETCACHE_KEY_NOT_FOUND = 20   # ???
 
+
+UNIX_CHANNEL = '/tmp/server_cont.s'
+CACHE_INSERT_COMPLETE = 'INSERT_OK'
 
 
 def convert(val):
@@ -61,8 +65,14 @@ class KVServer:
         self.tcpss = None
         # max clients to listen to
         self.max_listen = max_listen
+
         # specifies whether the server is blocking for cache updates
-        self.blocking = False
+        self.no_blocking = threading.Event()
+        self.no_blocking.set()
+
+        # lock for atomic access to the 'blocking' variable
+        self.lock = threading.Lock()
+
         # queue to store incoming requests while blocking
         self.incoming_requests = deque()
 
@@ -73,6 +83,8 @@ class KVServer:
 
     def activate(self):
 
+        logging.info('Key-Value store server started listening on port ' + str(self.port))
+
         # create udp socket server
         self.udpss = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udpss.bind((self.host, self.port))
@@ -82,8 +94,6 @@ class KVServer:
         self.tcpss.bind((self.host, self.port))
         self.tcpss.listen(1)
 
-        logging.info('Key-Value store server started listening on port ' + str(self.port))
-
         # spawn new thread that serves incoming udp (read) queries
         server_udp_t = threading.Thread(target=self.handle_client_udp_request)
         server_udp_t.start()
@@ -92,16 +102,46 @@ class KVServer:
         server_tcp_t = threading.Thread(target=self.handle_client_tcp_request)
         server_tcp_t.start()
 
-        """
-        sock= socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind('/tmp/what_a_night.s')
-        sock.listen(1)
+        self.create_controller_channel()
 
-        conn, addr = sock.accept()
-        data = conn.recv(1024)
-        print(data)
-        print('Success')
-        """
+
+
+    def create_controller_channel(self):
+
+        try:
+            os.unlink(UNIX_CHANNEL)
+        except:
+            if os.path.exists(UNIX_CHANNEL):
+                print('Error: unlinking unix socket')
+                sys.exit(1)
+
+        self.unixss = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.unixss.bind(UNIX_CHANNEL)
+        self.unixss.listen(1)
+
+        # spawn new thread that servers requests from controller (out-of-band communication)
+        server_cont_t = threading.Thread(target=self.handle_controller_request)
+        server_cont_t.start()
+
+
+    def handle_controller_request(self):
+
+        while True:
+
+            conn, addr = self.unixss.accept()
+
+            msg = conn.recv(1024)
+            msg = msg.decode('utf-8')
+
+            # if the cache insertion is completed, then server can
+            # continue serving write/update requests
+            if msg == CACHE_INSERT_COMPLETE:
+                pass
+                #self.no_blocking = False
+                #self.no_blocking.set()
+            else:
+                print('Unrecognized message from controller. (msg = ' + msg + ')')
+
 
 
     # handles incoming udp queries (i.e. read queries)
@@ -109,13 +149,27 @@ class KVServer:
 
         while True:
 
+            """
+            if len(self.incoming_requests) > 0:
+                self.no_blocking.wait()
+            """
+
+
             # if server is not currently blocking updates/writes then if there are
             # requests waiting in the queue then serve those requests, elsewise
             # serve the new incoming packet
-            if not self.blocking and len(self.incoming_requests) > 0:
+            if self.no_blocking.is_set() and len(self.incoming_requests) > 0:
                 netcache_pkt, addr = self.incoming_requests.popleft()
+
+                op = netcache_pkt[0]
+                key = netcache_pkt[5:21]
+                key = key.decode('utf-8').lstrip('\x00')
+                print('Handling request (key = {}, op = {}) from queue (due to blocking)'
+                        .format(key, str(op)))
+
             else:
                 netcache_pkt, addr = self.udpss.recvfrom(1024)
+
 
             # netcache_pkt is an array of bytes belonging to incoming packet's data
             # the data portion of the packet represents the netcache header, so we
@@ -126,30 +180,34 @@ class KVServer:
             key = netcache_pkt[5:21]
             value = netcache_pkt[21:]
 
-            #transform key to int
+            #transform key, seq to int
             key_s = int.from_bytes(key,'big')
-            key = key.decode('utf-8').lstrip('\x00')
             seq = int.from_bytes(seq,'big')
 
-            #transform val to string
+            #transform val and key to utf-8 strings
             value = value.decode("utf-8")
+            key = key.decode('utf-8').lstrip('\x00')
 
 
             # if server is blocking to wait for cache to finish updating, then check
             # if the update is finished or otherwise put the received packet into
             # queue to serialize writes/updates
 
-            if self.blocking:
+            if not self.no_blocking.is_set():
+
                 if op == NETCACHE_UPDATE_COMPLETE_OK:
                     logging.info('Successfully completed UPDATE(' + key + ') from client '
                             + addr[0] + ':' + str(addr[1]))
-                    print("Successfuly updated")
+                    print("Completed UPDATE coherency handshake")
+
                     # start accepting writes/updates again
-                    self.blocking = False
+                    self.no_blocking.set()
+
                     continue
 
                 elif op != NETCACHE_READ_QUERY:
                     self.incoming_requests.append((netcache_pkt, addr))
+                    print('Oops, I am blocked. (key = ' + key + ', op = ' + str(op))
                     continue
 
 
@@ -176,8 +234,14 @@ class KVServer:
 
                 if key in self.kv_store:
                     val = self.kv_store[key]
+
                     msg = build_message(NETCACHE_HOT_READ_QUERY, key_s, seq, val)
                     self.udpss.sendto(msg, addr)
+
+                    # server should now block until cache is updated before serving further writes/updates
+                    #self.no_blocking.clear()
+
+
                 else:
                     # TODO: ?what is the behaviour in this case?
                     val = ""
@@ -201,13 +265,16 @@ class KVServer:
                     msg = build_message(NETCACHE_REQUEST_SUCCESS, key_s, seq)
                     self.udpss.sendto(msg, addr)
 
+                    # server now should block until cache is updated before serving further writes/updates
+                    self.no_blocking.clear()
+
+                    import time
+                    time.sleep(0.2)
                     # inform the switch with appropriate operation field of netcache
                     # header to update its cache and to validate the key again
                     msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, value)
                     self.udpss.sendto(msg, addr)
 
-                    # server now should block until cache is updated before serving further writes/updates
-                    self.blocking = True
 
 
                 else:

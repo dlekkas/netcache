@@ -35,6 +35,10 @@ NETCACHE_KEY_NOT_FOUND = 20  # ???
 NETCACHE_UPDATE_COMPLETE = 4
 NETCACHE_DELETE_COMPLETE = 5
 
+UNIX_CHANNEL = '/tmp/server_cont.s'
+CACHE_INSERT_COMPLETE = 'INSERT_OK'
+
+
 crc32_polinomials = [0x04C11DB7, 0xEDB88320, 0xDB710641, 0x82608EDB,
                      0x741B8CD7, 0xEB31D82E, 0x0D663B05, 0xBA0DC66B,
                      0x32583499, 0x992C1A4C, 0x32583499, 0x992C1A4C]
@@ -80,17 +84,15 @@ class NCacheController(object):
         #self.out_of_band_test()
 
 
-    def out_of_band_test(self):
-        print('Out of band test')
+    def inform_server(self):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
-            sock.connect('/tmp/what_a_night.s')
+            sock.connect(UNIX_CHANNEL)
         except socket.error as msg:
-            print(msg)
-            sys.exit(1)
+            print('Error: Unable to contact server for cache operation completion')
+            return
 
-        message = "hello"
-        sock.sendall(message)
+        sock.sendall(CACHE_INSERT_COMPLETE)
 
 
     # reports the value of counters for each cached key
@@ -237,7 +239,7 @@ class NCacheController(object):
     # given a key and its associated value, we update the lookup table on
     # the switch and we also update the value registers with the value
     # given as argument (stored in multiple slots)
-    def insert(self, key, value):
+    def insert(self, key, value, cont=True):
         # find where to put the value for given key
         mem_info = self.first_fit(key, len(value))
 
@@ -275,6 +277,10 @@ class NCacheController(object):
         self.controller.register_write("cache_status", key_index, 1)
 
         self.key_map[key] = vt_index, bitmap, key_index
+
+        # inform the server about the successful cache insertion
+        if cont:
+            self.inform_server()
 
         print("Inserted key-value pair to cache: ("+key+","+value+")")
 
@@ -370,7 +376,7 @@ class NCacheController(object):
                        "eight", "nine", "ten", "eleven", "twelve"]
         cnt = 0
         for i in range(11):
-            self.insert(test_keys_l[i], test_values_l[i])
+            self.insert(test_keys_l[i], test_values_l[i], False)
 
 
 

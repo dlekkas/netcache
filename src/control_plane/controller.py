@@ -35,6 +35,10 @@ NETCACHE_KEY_NOT_FOUND = 20  # ???
 NETCACHE_UPDATE_COMPLETE = 4
 NETCACHE_DELETE_COMPLETE = 5
 
+UNIX_CHANNEL = '/tmp/server_cont.s'
+CACHE_INSERT_COMPLETE = 'INSERT_OK'
+
+
 crc32_polinomials = [0x04C11DB7, 0xEDB88320, 0xDB710641, 0x82608EDB,
                      0x741B8CD7, 0xEB31D82E, 0x0D663B05, 0xBA0DC66B,
                      0x32583499, 0x992C1A4C, 0x32583499, 0x992C1A4C]
@@ -71,6 +75,9 @@ class NCacheController(object):
         # as 0 bits and occupied slots as 1 bits
         self.mem_pool = [0] * VTABLE_ENTRIES
 
+        # number of memory slots used (useful for lfu eviction policy)
+        self.used_mem_slots = 0
+
         # dictionary storing the value table index, bitmap and counter/validity
         # register index in the P4 switch that corresponds to each key
         self.key_map = {}
@@ -80,17 +87,15 @@ class NCacheController(object):
         #self.out_of_band_test()
 
 
-    def out_of_band_test(self):
-        print('Out of band test')
+    def inform_server(self):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
-            sock.connect('/tmp/what_a_night.s')
+            sock.connect(UNIX_CHANNEL)
         except socket.error as msg:
-            print(msg)
-            sys.exit(1)
+            print('Error: Unable to contact server for cache operation completion')
+            return
 
-        message = "hello"
-        sock.sendall(message)
+        sock.sendall(CACHE_INSERT_COMPLETE)
 
 
     # reports the value of counters for each cached key
@@ -112,10 +117,9 @@ class NCacheController(object):
         t.daemon = True
         t.start()
 
-        # TODO(dimlek): before reseting registers check if the cache is
-        # utilized above a threshold (e.g 80%) and if it is then use the
-        # REDIS LFU eviction policy, where we sample the value counters
-        # and we remove the min K of them
+        # before reseting registers check if the cache is utilized above a
+        # threshold (e.g 80%) and evict keys using lfu policy if needed
+        self.cache_lfu_eviction(threshold=0.8, sampling=0.2, to_remove=0.5)
 
         # reset bloom filter related registers
         for i in range(BLOOMF_REGISTERS_NUM):
@@ -129,6 +133,39 @@ class NCacheController(object):
         self.controller.counter_reset(CACHED_KEYS_COUNTER)
 
         print("[INFO]: Reset query statistics registers.")
+
+
+
+    # the controller periodically checks if the memory used has exceeded a given threshold
+    # (e.g 80 %) and if that is the case then it evicts keys according to an approximated
+    # LFU policy inspired by REDIS (https://redis.io/topics/lru-cache))
+    def cache_lfu_eviction(self, threshold=0.8, sampling=0.2, to_remove=0.5):
+
+        # if the threshold has not been surpassed then nothing to do
+        if self.used_mem_slots <= (threshold * len(self.mem_pool) * VTABLE_SLOT_SIZE):
+            return
+
+        n_samples = int(sampling * len(self.key_map.items()))
+
+        samples = random.sample(self.key_map.items(), n_samples)
+
+        # read the counter for each sample and store them in an array
+        evict_list = []
+        for key, val in samples:
+            x, y, cnt_idx = self.key_map[key]
+            counter = self.controller.counter_read(CACHED_KEYS_COUNTER, cnt_idx).packets
+            evict_list.append((key, counter))
+
+        # sort the array and pick the smallest K-th counters and evict their keys
+        # (this could be achieved more optimally by using quickselect)
+        import operator
+        evict_list.sort(key = operator.itemgetter(1))
+
+        for i in range(int(to_remove * n_samples)):
+            curr = evict_list[i]
+            self.evict(curr[0])
+
+
 
 
     def setup(self):
@@ -205,6 +242,8 @@ class NCacheController(object):
                 # them to the new key and they are now allocated
                 self.mem_pool[idx] = old_bitmap | bitmap
 
+                self.used_mem_slots += bin(bitmap).count("1")
+
                 return (idx, bitmap)
 
         return None
@@ -237,7 +276,7 @@ class NCacheController(object):
     # given a key and its associated value, we update the lookup table on
     # the switch and we also update the value registers with the value
     # given as argument (stored in multiple slots)
-    def insert(self, key, value):
+    def insert(self, key, value, cont=True):
         # find where to put the value for given key
         mem_info = self.first_fit(key, len(value))
 
@@ -275,6 +314,10 @@ class NCacheController(object):
         self.controller.register_write("cache_status", key_index, 1)
 
         self.key_map[key] = vt_index, bitmap, key_index
+
+        # inform the server about the successful cache insertion
+        if cont:
+            self.inform_server()
 
         print("Inserted key-value pair to cache: ("+key+","+value+")")
 
@@ -352,6 +395,7 @@ class NCacheController(object):
 
         # deallocate space from memory pool
         self.mem_pool[vt_idx] = self.mem_pool[vt_idx] ^ bitmap
+        self.used_mem_slots = self.used_mem_slots - bin(bitmap).count("1")
 
         # free the id used to index the validity/counter register and append
         # it back to the id pool of the controller
@@ -370,7 +414,7 @@ class NCacheController(object):
                        "eight", "nine", "ten", "eleven", "twelve"]
         cnt = 0
         for i in range(11):
-            self.insert(test_keys_l[i], test_values_l[i])
+            self.insert(test_keys_l[i], test_values_l[i], False)
 
 
 

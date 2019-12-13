@@ -25,15 +25,16 @@ def main():
     # read should fail for hot key report threshold set to 3 (testing purposes)
     client.read("ctest")
 
-    #client.put("ctest_2", "tOmZmAvVujaXBP8nFm2TX10w291TUDSwKCis7VwjewSvaAEofUBlLirNa")
-    #client.put("ctest_2", "abcdeaaaujaXBP8nFm2TX10w291TUDSwKCis7VwjewSvaAEofUBlaaaNa")
+    client.put("ctest_2", "tOmZmAvVujaXBP8nFm2TX10w")
+    client.put("ctest_2", "abcdeaaaujaXBP8nFm2TX10w")
     client.put("ctest_2", "abcdefghijklmnopkalutera")
-    import time
-    time.sleep(0.2)
+    #import time
+    #time.sleep(0.2)
     client.read("ctest_2")
     client.read("ctest_2")
 
     # key should get cached after this one (threshold > 3)
+    client.read("ctest_2")
     client.read("ctest_2")
     client.read("ctest_2")
     client.read("ctest_2")

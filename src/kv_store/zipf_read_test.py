@@ -1,8 +1,10 @@
 from client_api import NetCacheClient
+
 import numpy as np
 
-def main():
-    client = NetCacheClient(n_servers=4)
+
+def main(n_servers, disable_cache):
+    client = NetCacheClient(n_servers=n_servers, no_cache=disable_cache)
 
     filepath = "data/zipf_sample.txt"
 
@@ -18,4 +20,12 @@ def main():
         client.read(query)
 
 if __name__=="__main__":
-    main()
+
+    import argparse
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--n-servers', help='number of servers', type=int, required=False, default=1)
+    parser.add_argument('--disable-cache', help='disable in-network caching', action='store_true')
+    args = parser.parse_args()
+
+    main(args.n_servers, args.disable_cache)

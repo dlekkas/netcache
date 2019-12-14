@@ -2,12 +2,13 @@ import socket
 import sys
 
 NETCACHE_PORT = 50000
-NO_NETCACHE_PORT = 50001
+NOCACHE_PORT = 50001
 
-N_SERVERS = 4
 MAX_SUPPORTED_SERVERS = 254
 
-
+NETCACHE_READ_QUERY = 0
+NETCACHE_WRITE_QUERY = 1
+NETCACHE_DELETE_QUERY = 2
 NETCACHE_KEY_NOT_FOUND = 20
 
 
@@ -37,22 +38,29 @@ def build_message(op, key, seq=0, value = ""):
 
 class NetCacheClient:
 
-    def __init__(self, port=NETCACHE_PORT):
+    def __init__(self, n_servers=1, no_cache=False):
+        self.n_servers = n_servers
         self.servers = []
-        self.port = port
+
+        if no_cache:
+            self.port = NOCACHE_PORT
+        else:
+            self.port = NETCACHE_PORT
+
         self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.get_servers_ips()
+
 
     # the IP addresses assigned to servers are based on the assignment
     # strategy defined at the p4app.json file; the basic l2 strategy
     # that we are using assigns IP addresses starting from 10.0.0.1
     # and assigns incrementing addresses to defined hosts
     def get_servers_ips(self):
-        if N_SERVERS > MAX_SUPPORTED_SERVERS:
+        if self.n_servers > MAX_SUPPORTED_SERVERS:
             print("Error: Exceeded maximum supported servers")
             sys.exit()
 
-        for i in range(N_SERVERS):
+        for i in range(self.n_servers):
             self.servers.append("10.0.0." + str(i+1));
 
     # return the right node who contains the given key - our implementation
@@ -64,7 +72,7 @@ class NetCacheClient:
         if partition_scheme == 'range':
             # find the right node through range partitioning based on 1st key character
             first_letter = ord(key[0])
-            return self.servers[first_letter % N_SERVERS]
+            return self.servers[first_letter % self.n_servers]
         elif partition_scheme == 'consistent-hash':
             # TODO(dimlek): impelement consistent hashing partitioning
             pass
@@ -74,8 +82,9 @@ class NetCacheClient:
 
         return -1
 
+
     def read(self, key, seq=0):
-        msg = build_message(0, key, seq)
+        msg = build_message(NETCACHE_READ_QUERY, key, seq)
         if msg is None:
             return
 
@@ -93,7 +102,7 @@ class NetCacheClient:
 
 
     def put(self, key, value, seq = 0, proto='udp'):
-        msg = build_message(1, key, seq, value)
+        msg = build_message(NETCACHE_WRITE_QUERY, key, seq, value)
         if msg is None:
             return
 
@@ -118,7 +127,7 @@ class NetCacheClient:
 
 
     def delete(self, key, seq = 0):
-        msg = build_message(2, key, seq)
+        msg = build_message(NETCACHE_DELETE_QUERY, key, seq)
         if msg is None:
             return
 

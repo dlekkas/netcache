@@ -16,6 +16,7 @@ logging.basicConfig(
         datefmt='%d-%m-%Y %H:%M:%S')
 
 NETCACHE_PORT = 50000
+NOCACHE_PORT = 50001
 
 NETCACHE_READ_QUERY = 0
 NETCACHE_WRITE_QUERY = 1

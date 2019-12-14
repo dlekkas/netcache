@@ -6,14 +6,7 @@ import time
 import sys
 import os
 
-
-LOGGING_FILE = 'server.log'
-
-logging.basicConfig(
-        filename=LOGGING_FILE,
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        level=logging.DEBUG,
-        datefmt='%d-%m-%Y %H:%M:%S')
+STATISTICS_REFRESH_INTERVAL = 30.0
 
 NETCACHE_PORT = 50000
 NOCACHE_PORT = 50001
@@ -26,9 +19,8 @@ NETCACHE_UPDATE_COMPLETE = 4
 NETCACHE_DELETE_COMPLETE = 5
 NETCACHED_UPDATE = 6
 NETCACHE_UPDATE_COMPLETE_OK = 7
-
 NETCACHE_REQUEST_SUCCESS = 10
-NETCACHE_KEY_NOT_FOUND = 20   # ???
+NETCACHE_KEY_NOT_FOUND = 20
 
 
 
@@ -77,12 +69,22 @@ class KVServer:
         # queue to store incoming requests while blocking
         self.incoming_requests = deque()
 
+        # keep number of requests dispatched to use for evaluation
+        self.requests_cnt = 0
+
         # unix socket for out of band communication with controller
         # (used for cache coherency purposes)
         self.unixss = None
 
 
     def activate(self):
+
+        # enable logging for debuggin purposes
+        logging.basicConfig(
+                filename='log/{}.log'.format(self.name),
+                format='%(asctime)s %(levelname)-8s %(message)s',
+                level=logging.DEBUG,
+                datefmt='%d-%m-%Y %H:%M:%S')
 
         # create udp socket server
         self.udpss = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -103,6 +105,8 @@ class KVServer:
         server_tcp_t = threading.Thread(target=self.handle_client_tcp_request)
         server_tcp_t.start()
 
+        self.periodic_request_report()
+
         """
         sock= socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.bind('/tmp/what_a_night.s')
@@ -115,7 +119,19 @@ class KVServer:
         """
 
 
-    # handles incoming udp queries (i.e. read queries)
+    # periodically print the number of requests received (used for testing purposes
+    # to evalute the quality of load balancing)
+    def periodic_request_report(self):
+        t = threading.Timer(STATISTICS_REFRESH_INTERVAL, self.periodic_request_report)
+        t.daemon = True
+        t.start()
+
+        # TODO(dimlek): add whatever statistics here
+        if not self.suppress:
+            print('[{}] Number of requests received = {}'.format(self.name, self.requests_cnt))
+
+
+    # handles incoming udp queries
     def handle_client_udp_request(self):
 
         while True:
@@ -183,6 +199,8 @@ class KVServer:
                     msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq)
                     self.udpss.sendto(msg, addr)
 
+                self.requests_cnt += 1
+
 
             elif op == NETCACHE_HOT_READ_QUERY:
 
@@ -196,6 +214,8 @@ class KVServer:
                 else:
                     msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq)
                     self.udpss.sendto(msg, addr)
+
+                self.requests_cnt += 1
 
 
             elif op == NETCACHED_UPDATE:
@@ -227,6 +247,7 @@ class KVServer:
                     logging.error('Key exists in cache but not in server (key = ' + key + ')')
                     print('Error: Key exists in cache but not in server (key = ' + key + ')')
 
+                self.requests_cnt += 1
 
 
 
@@ -244,9 +265,12 @@ class KVServer:
                 msg = build_message(NETCACHE_REQUEST_SUCCESS, key_s, seq, value)
                 self.udpss.sendto(msg, addr)
 
+                self.requests_cnt += 1
+
             else:
                 logging.info('Unsupported/Invalid query type received from client ' + addr[0])
                 print('Unsupported query type (received op = ' + str(op) + ')')
+
 
     # serves incoming tcp queries (i.e. put/delete)
     def handle_client_tcp_request(self):
@@ -286,8 +310,10 @@ class KVServer:
                 # to update its cache and to validate the key again
                 msg = build_message(NETCACHE_UPDATE_COMPLETE, key_s, seq, value)
                 conn.sendall(msg)
-
                 conn.close()
+
+                self.requests_cnt += 1
+
 
 
             elif op == NETCACHE_DELETE_QUERY:
@@ -306,10 +332,11 @@ class KVServer:
                     msg = build_message(NETCACHE_DELETE_COMPLETE, key_s, seq)
                     conn.sendall(msg)
                 else:
-                    # TODO: inform client in some way that key doesn't exist
-                    pass
+                    msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq)
+                    conn.sendall(msg)
 
                 conn.close()
+                self.requests_cnt += 1
 
             else:
                 logging.info('Unsupported query type received from client '

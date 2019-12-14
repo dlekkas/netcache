@@ -16,5 +16,5 @@ fi
 
 for i in $(seq $n_servers); do
 	server_data="$NCACHE_DIR/src/kv_store/data/server${i}.txt"
-	mx server$i $PYTHON $NCACHE_DIR/src/kv_store/server.py $server_data &
+	mx server$i $PYTHON $NCACHE_DIR/src/kv_store/server.py --input $server_data &
 done

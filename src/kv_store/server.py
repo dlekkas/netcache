@@ -51,10 +51,14 @@ class KVServer:
     def __init__(self, host, port=NETCACHE_PORT, max_listen=10):
         # simple in-memory key value store, represented by a dictionary
         self.kv_store = {}
+
         # server ip address
         self.host = host
         # port server is listening to
         self.port = port
+        # server name
+        self.name = 'server' + self.host.split('.')[-1]
+
         # udp server socket
         self.udpss = None
         #tcp server socket
@@ -143,7 +147,7 @@ class KVServer:
                 if op == NETCACHE_UPDATE_COMPLETE_OK:
                     logging.info('Successfully completed UPDATE(' + key + ') from client '
                             + addr[0] + ':' + str(addr[1]))
-                    print("Successfuly updated")
+                    print('[{}] Successfully completed UPDATE({})'.format(self.name, key))
                     # start accepting writes/updates again
                     self.blocking = False
                     continue
@@ -155,33 +159,28 @@ class KVServer:
 
 
             if op == NETCACHE_READ_QUERY:
-                logging.info('Received READ(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
+                logging.info('Received READ(' + key + ') from client ' + addr[0])
 
-                print('Received READ(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
+                print('[{}] Received READ({}) from client {}'.format(self.name, key, addr[0]))
 
                 if key in self.kv_store:
                     val = self.kv_store[key]
                     msg = build_message(NETCACHE_READ_QUERY, key_s, seq, val)
                     self.udpss.sendto(msg, addr)
                 else:
-
-                    # TODO: ?what is the behaviour in this case?
-                    val = ""
-                    msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq, val)
+                    msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq)
                     self.udpss.sendto(msg, addr)
 
 
             elif op == NETCACHE_HOT_READ_QUERY:
-                print('Received HOTREAD(' + key + ') from client ' + addr[0] + ":" + str(addr[1]))
+                print('[{}] Received HOTREAD({}) from client {}'.format(self.name, key, addr[0]))
 
                 if key in self.kv_store:
                     val = self.kv_store[key]
                     msg = build_message(NETCACHE_HOT_READ_QUERY, key_s, seq, val)
                     self.udpss.sendto(msg, addr)
                 else:
-                    # TODO: ?what is the behaviour in this case?
-                    val = ""
-                    msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq, val)
+                    msg = build_message(NETCACHE_KEY_NOT_FOUND, key_s, seq)
                     self.udpss.sendto(msg, addr)
 
 
@@ -189,8 +188,7 @@ class KVServer:
                 logging.info('Received UPDATE(' + key + ') from client '
                         + addr[0] + ":" + str(addr[1]))
 
-                print('Received UPDATE(' + key + ') from client '
-                        + addr[0] + ":" + str(addr[1]))
+                print('[{}] Received UPDATE({}) from client {}'.format(self.name, key, addr[0]))
 
                 # if key already exists in server then it's a valid update query
                 if key in self.kv_store:
@@ -221,8 +219,7 @@ class KVServer:
                 logging.info('Received WRITE(' + key + ') from client '
                         + addr[0] + ":" + str(addr[1]))
 
-                print('Received WRITE(' + key + ') from client '
-                        + addr[0] + ":" + str(addr[1]))
+                print('[{}] Received WRITE({}) from client {}'.format(self.name, key, addr[0]))
 
                 # write the value of the requested key
                 self.kv_store[key] = value
@@ -263,8 +260,7 @@ class KVServer:
                 logging.info('Received WRITE(' + key + ') from client '
                         + addr[0] + ":" + str(addr[1]))
 
-                print('Received WRITE(' + key + ') from client '
-                        + addr[0] + ":" + str(addr[1]))
+                print('[{}] Received WRITE({}) from client {}'.format(self.name, key, addr[0]))
 
                 # update the value of the requested key
                 self.kv_store[key] = value
@@ -281,8 +277,7 @@ class KVServer:
                 logging.info('Received DELETE(' + key + ') from client '
                         + addr[0] + ":" + str(addr[1]))
 
-                print('Received WRITE(' + key + ') from client '
-                        + addr[0] + ":" + str(addr[1]))
+                print('[{}] Received DELETE({}) from client {}'.format(self.name, key, addr[0]))
 
                 if key in self.kv_store:
                     # delete the key from the key-value store
@@ -330,7 +325,7 @@ def main():
     from subprocess import check_output
 
     # dynamically get the IP address of the server
-    server_ip = check_output(['hostname', '--all-ip-addresses'])
+    server_ip = check_output(['hostname', '--all-ip-addresses']).decode('utf-8').rstrip()
     server = KVServer(server_ip)
 
     # populate the server with all the files given as command line

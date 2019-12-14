@@ -2,9 +2,13 @@ import socket
 import sys
 
 NETCACHE_PORT = 50000
+NO_NETCACHE_PORT = 50001
 
 N_SERVERS = 4
 MAX_SUPPORTED_SERVERS = 254
+
+
+NETCACHE_KEY_NOT_FOUND = 20
 
 
 def convert(val):
@@ -77,9 +81,15 @@ class NetCacheClient:
 
         self.udps.connect((self.get_node(key), self.port))
         self.udps.send(msg)
+
         data = self.udps.recv(1024)
-        print(data[21:].decode("utf-8"))
-        #print(data[21:])
+        op = data[0]
+
+        if op == NETCACHE_KEY_NOT_FOUND:
+            print('Error: Key not found (key = ' + key + ')')
+        else:
+            val = data[21:].decode("utf-8")
+            print(val)
 
 
     def put(self, key, value, seq = 0, proto='udp'):

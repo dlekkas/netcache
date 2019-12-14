@@ -1,4 +1,5 @@
 from collections import deque
+
 import socket
 import logging
 import threading
@@ -19,8 +20,10 @@ NETCACHE_UPDATE_COMPLETE = 4
 NETCACHE_DELETE_COMPLETE = 5
 NETCACHED_UPDATE = 6
 NETCACHE_UPDATE_COMPLETE_OK = 7
+
 NETCACHE_REQUEST_SUCCESS = 10
 NETCACHE_KEY_NOT_FOUND = 20
+NETCACHE_METRICS_REPORT = 30
 
 
 
@@ -103,7 +106,10 @@ class KVServer:
         server_tcp_t = threading.Thread(target=self.handle_client_tcp_request)
         server_tcp_t.start()
 
-        self.periodic_request_report()
+        # self.periodic_request_report()
+
+        # starting time of serving requests (used for throughput calculation)
+        self.start_time = time.time()
 
         """
         sock= socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -248,7 +254,6 @@ class KVServer:
                 self.requests_cnt += 1
 
 
-
             elif op == NETCACHE_WRITE_QUERY:
                 logging.info('Received WRITE(' + key + ') from client '
                         + addr[0] + ":" + str(addr[1]))
@@ -264,6 +269,26 @@ class KVServer:
                 self.udpss.sendto(msg, addr)
 
                 self.requests_cnt += 1
+
+
+            elif op == NETCACHE_METRICS_REPORT:
+
+                if not self.suppress:
+                    print('[{}] Received METRICS_REPORT_REQUEST() from client {}'
+                            .format(self.name, key, addr[0]))
+
+                total_elapsed_time = time.time() - self.start_time
+                if total_elapsed_time != 0:
+                    throughput = self.requests_cnt / total_elapsed_time
+                else:
+                    throughput = 0
+
+                data = '\n'.join((
+                    "[{}] requests_received = {}".format(self.name, self.requests_cnt),
+                    "[{}] throughput = {}\n".format(self.name, throughput)))
+
+                self.udpss.sendto(bytes(data, "utf-8"), addr)
+
 
             else:
                 logging.info('Unsupported/Invalid query type received from client ' + addr[0])

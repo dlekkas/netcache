@@ -19,6 +19,9 @@ def main(n_servers, disable_cache):
     for query in sample:
         client.read(query)
 
+    print("\n########## SERVER METRICS REPORT ##########\n")
+    client.request_metrics_report()
+
 if __name__=="__main__":
 
     import argparse

@@ -9,7 +9,9 @@ MAX_SUPPORTED_SERVERS = 254
 NETCACHE_READ_QUERY = 0
 NETCACHE_WRITE_QUERY = 1
 NETCACHE_DELETE_QUERY = 2
+
 NETCACHE_KEY_NOT_FOUND = 20
+NETCACHE_METRICS_REPORT = 30
 
 
 def convert(val):
@@ -138,4 +140,18 @@ class NetCacheClient:
         status = tcps.recv(1024)
         # TODO: evaluate the status returned
         tcps.close()
+
+
+    def request_metrics_report(self):
+        results = []
+
+        for server in self.servers:
+            msg = build_message(NETCACHE_METRICS_REPORT, "")
+
+            self.udps.connect((server, self.port))
+            self.udps.send(msg)
+
+            reply = self.udps.recv(1024)
+
+            print(reply.decode("utf-8"))
 

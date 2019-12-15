@@ -95,7 +95,7 @@ class NetCacheClient:
         return -1
 
 
-    def read(self, key, seq=0):
+    def read(self, key, seq=0, suppress=False):
         msg = build_message(NETCACHE_READ_QUERY, key, seq)
         if msg is None:
             return
@@ -110,6 +110,9 @@ class NetCacheClient:
 
         latency = time.time() - start_time
         self.latencies.append(latency)
+
+        if suppress:
+            return
 
         if op == NETCACHE_KEY_NOT_FOUND:
             print('Error: Key not found (key = ' + key + ')')

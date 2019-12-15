@@ -13,27 +13,31 @@ scripts which automate various procedures which will be used throughout the proc
 of evaluating Netcache. Below we briefly describe the files which are of high
 importance and are extensively used afterwards:
 
-	*	`p4app_gen.sh`: creates well typed p4app.json documents with variable number of
+*	`p4app_gen.sh`: creates well typed p4app.json documents with variable number of
 	clients and servers where both of those numbers can be supplied through the command
 	line options `-s <num-servers>` and `-c <num-clients>` respectively. For further
 	reference, feel free to inspect the file and explore its usage.
-	*	`produce_keyvals.sh`: generates data files containing key value pairs which will
+
+*	`produce_keyvals.sh`: generates data files containing key value pairs which will
 	subsequently be used to populate the key-value store of each server. Those key value
 	pairs take into account the range partioning scheme used to assign accurate keys to
 	each server. This scripts takes as arguments the number of servers through the
 	`-s <num-servers` command line option and the number of values to feed to each server
 	through the `-n <num-values>` command line option.
-	*	`init_servers.sh`: initiates a number of servers given as command line argument
+
+*	`init_servers.sh`: initiates a number of servers given as command line argument
 	and prepopulates them based on the values created by the script `produce_keyvals.sh`.
 	Additionally, through command line arguments one can specify any server flags to supply.
 	For reference of such flags, feel free to inspect the usage of `server.py` by running the
 	command `server.py -h`. Such server flags can disable netcache and suppress server output.
-	*	`gen_zipf_samples.py`: generates a sequence of keys to query and output them
+
+*	`gen_zipf_samples.py`: generates a sequence of keys to query and output them
 	on a file which is self describing based on its command line parameters. To invoke
 	this file, one should specify the number of queries to generate, the number of servers
 	and the skewness of the workload. All those queries are generated based on the zipf
 	distribution which is also used in the evaluation section of the original Netcache paper.
-	*	`exec_queries.py`: executes read queries for all the keys residing in the files
+
+*	`exec_queries.py`: executes read queries for all the keys residing in the files
 	given as arguments and also specifies the number of servers. After the execution of the
 	queries, important statistics are returned including throughput, latency and load distribution.
 

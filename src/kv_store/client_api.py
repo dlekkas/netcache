@@ -1,4 +1,5 @@
 import socket
+import time
 import sys
 
 NETCACHE_PORT = 50000
@@ -52,6 +53,9 @@ class NetCacheClient:
         self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.get_servers_ips()
 
+        # store all latencies of the requests sent (used for evaluation)
+        self.latencies = []
+
 
     # the IP addresses assigned to servers are based on the assignment
     # strategy defined at the p4app.json file; the basic l2 strategy
@@ -71,13 +75,19 @@ class NetCacheClient:
     # TODO:1(dimlek): implement consistent hashing partitioning
     # TODO:2(dimlek): explore option of proxy assisted partitioning
     def get_node(self, key, partition_scheme='range'):
+
         if partition_scheme == 'range':
             # find the right node through range partitioning based on 1st key character
             first_letter = ord(key[0])
             return self.servers[first_letter % self.n_servers]
+
+        elif partition_scheme == 'hash':
+            return self.servers[hash(key) % self.n_servers]
+
         elif partition_scheme == 'consistent-hash':
             # TODO(dimlek): impelement consistent hashing partitioning
             pass
+
         else:
             print("Error: Invalid partitioning scheme")
             sys.exit()
@@ -90,11 +100,16 @@ class NetCacheClient:
         if msg is None:
             return
 
+        start_time = time.time()
+
         self.udps.connect((self.get_node(key), self.port))
         self.udps.send(msg)
 
         data = self.udps.recv(1024)
         op = data[0]
+
+        latency = time.time() - start_time
+        self.latencies.append(latency)
 
         if op == NETCACHE_KEY_NOT_FOUND:
             print('Error: Key not found (key = ' + key + ')')
@@ -109,21 +124,35 @@ class NetCacheClient:
             return
 
         if proto == 'udp':
+            start_time = time.time()
             self.udps.connect((self.get_node(key), self.port))
             self.udps.send(msg)
 
             status = self.udps.recv(1024)
-            # TODO: evaluate the status returned
+            latency = time.time() - start_time
+
+            if status[0] == NETCACHE_KEY_NOT_FOUND:
+                print('Error: Key not found (key = ' + key + ')')
+
+            self.latencies.append(latency)
 
         elif proto == 'tcp':
             tcps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             tcps.connect((self.get_node(key), self.port))
-            tcps.send(msg)
 
+            start_time = time.time()
+
+            tcps.send(msg)
             status = tcps.recv(1024)
-            # TODO: evaluate the status returned
+
+            latency = time.time() - start_time
+            self.latencies.append(latency)
+
+            if status[0] == NETCACHE_KEY_NOT_FOUND:
+                print('Error: Key not found (key = ' + key + ')')
 
             tcps.close()
+
         else:
             print('Protocol for write (' + proto + ') unsupported')
 
@@ -135,10 +164,18 @@ class NetCacheClient:
 
         tcps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcps.connect((self.get_node(key), self.port))
-        tcps.send(msg)
 
+        start_time = time.time()
+
+        tcps.send(msg)
         status = tcps.recv(1024)
-        # TODO: evaluate the status returned
+
+        latency = time.time() - start_time
+        self.latencies.append(latency)
+
+        if status[0] == NETCACHE_KEY_NOT_FOUND:
+            print('Error: Key not found (key = ' + key + ')')
+
         tcps.close()
 
 
@@ -152,6 +189,13 @@ class NetCacheClient:
             self.udps.send(msg)
 
             reply = self.udps.recv(1024)
-
             print(reply.decode("utf-8"))
 
+        cnt = 0
+        for latency in self.latencies:
+            cnt += latency
+
+        # calculate average latency in milliseconds
+        avg_latency = (cnt / len(self.latencies)) * 1000
+
+        print('avg_latency = ' + '{:.3f}'.format(avg_latency))

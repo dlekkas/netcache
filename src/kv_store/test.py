@@ -48,6 +48,8 @@ def main(n_servers, no_cache):
     client.read("ctest_2")
     client.read("ctest_2")
 
+    client.request_metrics_report()
+
     """
     # delete query forwarded to KV-store
     client.delete("ctest_2")

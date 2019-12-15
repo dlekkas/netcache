@@ -18,9 +18,21 @@ def main(n_servers, disable_cache, suppress, input_files):
         for query in sample:
             client.read(query, suppress=suppress)
 
-        print("\n########## SERVER METRICS REPORT ##########")
-        print("########## [{}] ##########\n".format(filepath))
-        client.request_metrics_report()
+        #print("\n########## SERVER METRICS REPORT ##########")
+        #print("########## [{}] ##########\n".format(filepath))
+
+        if disable_cache:
+            x = 'nocache'
+        else:
+            x = 'netcache'
+
+        input_file = filepath.split('/')[1].split('.')[0]
+
+        out_file = 'results/{}_{}_{}.txt'.format(input_file, n_servers, x)
+        out_fd = open(out_file, 'w')
+
+        client.request_metrics_report(output=out_fd)
+
 
 if __name__=="__main__":
 

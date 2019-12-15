@@ -182,7 +182,7 @@ class NetCacheClient:
         tcps.close()
 
 
-    def request_metrics_report(self):
+    def request_metrics_report(self, output=sys.stdout):
         results = []
 
         for server in self.servers:
@@ -192,7 +192,7 @@ class NetCacheClient:
             self.udps.send(msg)
 
             reply = self.udps.recv(1024)
-            print(reply.decode("utf-8"))
+            output.write(reply.decode("utf-8"))
 
         cnt = 0
         for latency in self.latencies:
@@ -201,4 +201,4 @@ class NetCacheClient:
         # calculate average latency in milliseconds
         avg_latency = (cnt / len(self.latencies)) * 1000
 
-        print('avg_latency = ' + '{:.3f}'.format(avg_latency))
+        output.write('avg_latency = ' + '{:.3f}'.format(avg_latency))

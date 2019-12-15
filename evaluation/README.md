@@ -49,8 +49,14 @@ importance and are extensively used afterwards:
 ### Simple Example
 First, we present a simple example where we showcase the functionality of Netcache
 by realising a simple topology and by executing a script `test.py` which executes
-a sequence of queries on the key-value store. Our simple topology will consist of
-1 client and 4 servers.
+a sequence of queries on the key-value store.
+
+Our simple topology will consist of 1 client and 4 servers and is also visualised
+in the figure below:
+![example-topo](figures/example_topology.jpg)
+
+
+Below are presented step-by-step instructions to run this simple example:
 
 1. Navigate to `src/kv_store` and execute the `produce_keyvals.sh` script to generate 500
 key-value pairs for each server:

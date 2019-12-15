@@ -4,13 +4,8 @@ from client_api import NetCacheClient
 def main(n_servers, no_cache):
     client = NetCacheClient(n_servers=n_servers, no_cache=no_cache)
 
-    # read should be returned from switch (cached statically)
-    client.read("one")
-    client.read("two")
-    client.read("ten")
-
     # read should be forwared to KV-Store and return error (not inserted)
-    #client.read("test")
+    client.read("test")
 
     # put query should be forwarded to KV-Store
     client.put("ctest", "test_okay")
@@ -28,16 +23,17 @@ def main(n_servers, no_cache):
     client.put("ctest_2", "tOmZmAvVujaXBP8nFm2TX10w")
     client.put("ctest_2", "abcdeaaaujaXBP8nFm2TX10w")
     client.put("ctest_2", "abcdefghijklmnopkalutera")
-    #import time
-    #time.sleep(0.2)
+
+    # those queries should be replied by the server
+    client.read("ctest_2")
+    client.read("ctest_2")
     client.read("ctest_2")
     client.read("ctest_2")
 
-    # key should get cached after this one (threshold > 3)
+    # queries should be replied from the cache (threshold > 3)
     client.read("ctest_2")
     client.read("ctest_2")
-    client.read("ctest_2")
-    client.read("ctest_2")
+
     client.put("ctest_2", "another")
     client.read("ctest_2")
     client.read("ctest_2")
@@ -48,7 +44,7 @@ def main(n_servers, no_cache):
     client.read("ctest_2")
     client.read("ctest_2")
 
-    client.request_metrics_report()
+    #client.request_metrics_report()
 
     """
     # delete query forwarded to KV-store

@@ -60,12 +60,8 @@ for i in $(seq $n_servers); do
 
 	file_name="${data_dir}/server${i}.txt"
 
-	if [ -e $file_name ]; then
-		echo "Error: File $file_name already exists."
-	else
-		for j in $(seq $n_values); do
-			echo "${start_char}_${j}=s${i}_val${j}" >> $file_name
-		done
-	fi
+	for j in $(seq $n_values); do
+		echo "${start_char}_${j}=s${i}_val${j}" >> $file_name
+	done
 
 done

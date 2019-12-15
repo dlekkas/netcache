@@ -26,7 +26,7 @@ def main(input_file):
     with open(input_file, 'r') as fp:
         lines = fp.readlines()
 
-        for i in range(0, len(lines), 2):
+        for i in range(0, len(lines) - 1, 2):
             server_name = lines[i].split(']')[0][1:]
             n_requests = lines[i].split('=')[1].strip()
             throughput = lines[i+1].split('=')[1].strip()

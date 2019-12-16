@@ -45,6 +45,11 @@ importance and are extensively used afterwards:
 	given as arguments and also specifies the number of servers. After the execution of the
 	queries, important statistics are returned including throughput, latency and load distribution.
 
+## Requirements
+
+To reproduce our results and execute our scripts successfully there are the following dependencies:
+*  `matplotlib` - install through `sudo apt install python3-matplotlib`
+*  `numpy` - install through `sudo apt install python3-numpy`
 
 ### Simple Example
 First, we present a simple example where we showcase the functionality of Netcache
@@ -90,15 +95,15 @@ inspecting the output of servers and controller the behavior is more clearly sho
 ## Experiments
 In this section, we conduct experiments by generating querying workload that more closely
 resembles that of a real-world scenario. We achieve that by generating keys to query based
-on the Zipf distribution. Below, we present two experiments which also server as examples
+on the Zipf distribution. Below, we present experiments which also serve as examples
 to make the readers able to conduct their own independent experiments by tweaking some
-script parameters.
+script and system parameters.
 
 
 ### Experiment 1
-Our first experimental topology consists of 4 clients and 8 servers. We generate key-value
-pairs and populate each server with 5000 distinct keys. Based on those data, we use the
-zipf distribution to generate a workload of 40000 queries. The skewness of the workload is
+Our first experimental topology consists of 1 clients and 8 servers. We generate key-value
+pairs and populate each server with 10000 distinct keys. Based on those data, we use the
+zipf distribution to generate a workload of 100000 queries. The skewness of the workload is
 determined by the skewness parameter provided as command line option of the
 `gen_zipf_samples.py`.
 
@@ -176,7 +181,7 @@ mx client1 python3 exec_queries.py --n-servers 8 --disable-cache --suppress --in
 3. Inside `src/kv_store` we use the `gen_plots.py` script and the results file generated
 by the previous step to display a plot of the load (number of requests) handled by each server:
 ```bash
-sudo apt install python3-matplotlib
+mkdir -p results
 python3 gen_plots.py --input results/zipf_sample_100000_05_8_nocache.txt
 ```
 

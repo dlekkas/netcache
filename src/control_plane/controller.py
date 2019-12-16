@@ -92,7 +92,7 @@ class NCacheController(object):
         try:
             sock.connect(UNIX_CHANNEL)
         except socket.error as msg:
-            print('Error: Unable to contact server for cache operation completion')
+            #print('Error: Unable to contact server for cache operation completion')
             return
 
         sock.sendall(CACHE_INSERT_COMPLETE)

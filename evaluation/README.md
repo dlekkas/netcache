@@ -48,8 +48,8 @@ importance and are extensively used afterwards:
 ## Requirements
 
 To reproduce our results and execute our scripts successfully there are the following dependencies:
-*  `matplotlib` - install through `sudo apt install python3-matplotlib`
-*  `numpy` - install through `sudo apt install python3-numpy`
+*  `sudo apt install python3-matplotlib`
+*  `sudo apt install python3-numpy`
 
 ### Simple Example
 First, we present a simple example where we showcase the functionality of Netcache
@@ -152,7 +152,7 @@ mx client1 python3 exec_queries.py --n-servers 8 --suppress --input data/zipf_sa
 8. Inside `src/kv_store` we use the `gen_plots.py` script and the results file generated
 by the previous step to display a plot of the load (number of requests) handled by each server:
 ```bash
-sudo apt install python3-matplotlib
+mkdir -p results
 python3 gen_plots.py --input results/zipf_sample_100000_05_8_netcache.txt
 ```
 

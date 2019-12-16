@@ -146,13 +146,13 @@ also prepopulating them with the key-value pairs generated at Step 1:
 7. In another terminal window, navigate to `src/kv_store` and spawn a client to execute
 the workload that we generated at step 2.
 ```bash
+mkdir -p results
 mx client1 python3 exec_queries.py --n-servers 8 --suppress --input data/zipf_sample_100000_05.txt
 ```
 
 8. Inside `src/kv_store` we use the `gen_plots.py` script and the results file generated
 by the previous step to display a plot of the load (number of requests) handled by each server:
 ```bash
-mkdir -p results
 python3 gen_plots.py --input results/zipf_sample_100000_05_8_netcache.txt
 ```
 
@@ -175,13 +175,13 @@ same plot to showcase the difference:
 2. In another terminal window, navigate to `src/kv_store` and spawn a client to execute
 again the workload that we generated at step 2 but with caching disabled.
 ```bash
+mkdir -p results
 mx client1 python3 exec_queries.py --n-servers 8 --disable-cache --suppress --input data/zipf_sample_100000_05.txt
 ```
 
 3. Inside `src/kv_store` we use the `gen_plots.py` script and the results file generated
 by the previous step to display a plot of the load (number of requests) handled by each server:
 ```bash
-mkdir -p results
 python3 gen_plots.py --input results/zipf_sample_100000_05_8_nocache.txt
 ```
 

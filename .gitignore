@@ -30,3 +30,6 @@ report/*.fls
 report/*.out
 report/*.synctex.gz
 report/*.toc
+
+# ignore results files
+src/kv_store/results/

@@ -111,16 +111,23 @@ class KVServer:
         # starting time of serving requests (used for throughput calculation)
         self.start_time = time.time()
 
-        """
-        sock= socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind('/tmp/what_a_night.s')
-        sock.listen(1)
 
-        conn, addr = sock.accept()
-        data = conn.recv(1024)
-        print(data)
-        print('Success')
-        """
+
+    def create_controller_channel(self):
+        try:
+            os.unlink(UNIX_CHANNEL)
+        except:
+            if os.path.exists(UNIX_CHANNEL):
+                print('Error: unlinking unix socket')
+                sys.exit(1)
+
+        self.unixss = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.unixss.bind(UNIX_CHANNEL)
+        self.unixss.listen(1)
+
+        # spawn new thread that servers requests from controller (out-of-band communication)
+        server_cont_t = threading.Thread(target=self.handle_controller_request)
+        server_cont_t.start()
 
 
     # periodically print the number of requests received (used for testing purposes

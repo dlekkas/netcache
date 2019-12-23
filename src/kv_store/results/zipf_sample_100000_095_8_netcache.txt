@@ -1,0 +1,17 @@
+[server1] requests_received = 0
+[server1] throughput = 0.0
+[server2] requests_received = 19
+[server2] throughput = 0.03867527573774815
+[server3] requests_received = 7
+[server3] throughput = 0.0142480104237291
+[server4] requests_received = 9
+[server4] throughput = 0.018319361767238973
+[server5] requests_received = 6
+[server5] throughput = 0.012212405869570217
+[server6] requests_received = 0
+[server6] throughput = 0.0
+[server7] requests_received = 8
+[server7] throughput = 0.016283039162363497
+[server8] requests_received = 6
+[server8] throughput = 0.012213100430360814
+avg_latency = 1.618
